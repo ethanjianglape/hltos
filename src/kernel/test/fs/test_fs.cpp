@@ -191,13 +191,9 @@ void test_tmpfs_write_then_read_roundtrip()
     test::assert_eq(written, 5, "tmpfs: write returns byte count");
     test::assert_eq(fd.offset, 5ul, "tmpfs: write advances fd offset");
 
-    log::debug("test file->read");
-
     fd.offset = 0;
     char buf[5] = {};
     int read = file->read(&fd, buf, sizeof(buf));
-
-    log::debugf("bytes read={}, buff={}", read, kstring(buf, 5));
 
     test::assert_eq(read, 5, "tmpfs: read returns byte count");
     test::assert_eq(kstring(buf, 5), kstring("hello"), "tmpfs: read returns previously written data");

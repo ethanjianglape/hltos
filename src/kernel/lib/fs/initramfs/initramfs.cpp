@@ -130,7 +130,7 @@ void InitramfsMountPoint::insert_inode(const char* path, Inode* inode)
 
 void InitramfsMountPoint::parse_tar_headers()
 {
-    log::info("Parsing tar headers");
+    log::info("initramfs: parsing tar headers");
 
     root_inode = new InitramfsDirectoryInode{this};
     root_inode->ino = next_ino++;
@@ -139,7 +139,7 @@ void InitramfsMountPoint::parse_tar_headers()
     std::uint8_t* addr = tar_buffer;
     std::uint8_t* end = addr + tar_size;
 
-    log::debugf("tar start = {}, end = {}", fmt::hex{addr}, fmt::hex{end});
+    log::infof("initramfs: tar located at [{} - {}]", fmt::hex{addr}, fmt::hex{end});
 
     while (addr < end) {
         TarHeader* header = reinterpret_cast<TarHeader*>(addr);
@@ -147,7 +147,7 @@ void InitramfsMountPoint::parse_tar_headers()
 
         std::uintmax_t size = fmt::parse_uint((const char*)header->size, 12, fmt::NumberFormat::OCT);
         std::uintmax_t num_blocks = (size + 511) / 512;
-        char* filename = header->filename;
+        const char* filename = header->filename;
 
         if (is_empty_header(header)) {
             goto next;
@@ -165,7 +165,11 @@ void InitramfsMountPoint::parse_tar_headers()
             goto next;
         }
 
-        log::debugf("tar header found, size = {}, block = {}, name = '{}'", size, num_blocks, kstring{filename});
+        log::infof("initramfs: tar header");
+        log::infof("  addr = {}", fmt::hex{header});
+        log::infof("  size = {}", size);
+        log::infof("  blocks = {}", num_blocks);
+        log::infof("  name = {}", filename);
 
         if (header->typeflag == TYPEFLAG_DIR) {
             new_inode = new InitramfsDirectoryInode{this};
@@ -192,12 +196,6 @@ MountPoint* InitramfsFileSystem::mount(const char*) { return nullptr; }
 MountPoint* InitramfsFileSystem::mount_from_mem(std::uint8_t* buffer, std::size_t size)
 {
     return new InitramfsMountPoint{buffer, size};
-}
-
-void init(std::uint8_t*, std::size_t)
-{
-    //tar::init(addr);
-    //fs::mount("/", &initramfs_fs);
 }
 
 }

@@ -59,8 +59,6 @@ ProcMountPoint::ProcMountPoint()
 {
     int ino = PROCFS_ROOT_INODE;
 
-    log::debug("******** building proc mp ********");
-
     root_inode = new ProcDirectoryInode{this, ino++};
     self_inode = new ProcSelfInode{this, root_inode, ino++};
 }
@@ -72,7 +70,6 @@ const char* ProcFileSystem::name()
 
 MountPoint* ProcFileSystem::mount(const char*)
 {
-    log::debug("******** building proc fs ********");
     return new ProcMountPoint{};
 }
 

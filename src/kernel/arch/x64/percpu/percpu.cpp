@@ -109,8 +109,6 @@ static void idle_process_kthread()
 
 void init()
 {
-    log::init_start("PerCPU");
-
     auto* per_cpu_data = new PerCPU{};
 
     // Set GS_BASE to our per-CPU struct. We're in kernel mode at boot.
@@ -126,9 +124,7 @@ void init()
     per_cpu_data->process = per_cpu_data->idle_process;
     per_cpu_data->preemption_enabled = true;
 
-    log::info("GS_BASE = ", fmt::hex{reinterpret_cast<std::uintptr_t>(per_cpu_data)});
-
-    log::init_end("PerCPU");
+    log::info("percpu: GS_BASE = ", fmt::hex{per_cpu_data});
 }
 
 /**

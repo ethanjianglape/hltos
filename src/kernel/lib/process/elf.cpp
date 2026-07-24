@@ -1,7 +1,7 @@
-#include <process/elf.hpp>
-
 #include <fmt/fmt.hpp>
+#include <kassert/kassert.hpp>
 #include <log/log.hpp>
+#include <process/elf.hpp>
 
 namespace process::elf {
 bool validate_magic(Elf64_Header* header)
@@ -34,11 +34,9 @@ Elf64_File invalid_file()
 
 Elf64_File parse_file(std::uint8_t* buffer, [[maybe_unused]] std::size_t size)
 {
-    if (buffer == nullptr) {
-        return invalid_file();
-    }
+    kassert_not_null(buffer);
 
-    log::info("Validating ELF file...");
+    log::infof("ELF64: validating file");
 
     auto* header = reinterpret_cast<Elf64_Header*>(buffer);
 
@@ -80,15 +78,14 @@ Elf64_File parse_file(std::uint8_t* buffer, [[maybe_unused]] std::size_t size)
     }
 
     for (const auto& header : file.program_headers) {
-        log::debugf("ELF program header: flags = {} vaddr = {} file sz = {} mem sz = {}",
-            fmt::bin{header.p_flags},
-            fmt::hex{header.p_vaddr},
-            fmt::hex{header.p_filesz},
-            fmt::hex{header.p_memsz});
+        log::infof("ELF64: program header");
+        log::infof("  addr @ {}", fmt::hex{header.p_vaddr});
+        log::infof("  file size = {} bytes", header.p_filesz);
+        log::infof("  mem size  = {} bytes", header.p_memsz);
+        log::infof("  flags = {}", fmt::bin{header.p_flags});
     }
-
-    log::success("Valid ELF File found!");
 
     return file;
 }
+
 }

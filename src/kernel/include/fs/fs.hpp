@@ -148,6 +148,8 @@ public:
     int lseek(FileDescriptor*, int, int) final override { return -EISDIR; }
 };
 
+void init();
+
 // ============================================================================
 // VFS operations - global path-based file access
 // ============================================================================

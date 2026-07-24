@@ -3,6 +3,8 @@
 #include <exclusive/kspinlock_irqsave.hpp>
 #include <fs/devfs/devfs.hpp>
 #include <fs/fs.hpp>
+#include <fs/procfs/procfs.hpp>
+#include <fs/tmpfs/tmpfs.hpp>
 #include <kpanic/kpanic.hpp>
 #include <log/log.hpp>
 #include <process/process.hpp>
@@ -13,6 +15,19 @@ static MountPoint* g_root_mountpoint;
 static kvector<MountPoint*> g_mountpoints;
 
 static kspinlock_irqsave g_fs_spinlock;
+
+void init()
+{
+    auto* devfs = new devfs::DevFileSystem{};
+    auto* tmpfs = new tmpfs::TmpFileSystem{};
+    auto* procfs = new procfs::ProcFileSystem{};
+
+    mount("/dev", devfs, nullptr);
+    mount("/tmp", tmpfs, nullptr);
+    mount("/proc", procfs, nullptr);
+
+    devfs::init_tty();
+}
 
 Inode::Inode(MountPoint* mp)
     : mountpoint{mp}
@@ -119,7 +134,7 @@ void register_mount(const char* path, MountPoint* mp)
     mp->path = path;
 
     if (g_root_mountpoint == nullptr) {
-        log::info("VFS mount root at ", path);
+        log::infof("VFS: root mounted at {}", path);
         g_root_mountpoint = mp;
     }
 

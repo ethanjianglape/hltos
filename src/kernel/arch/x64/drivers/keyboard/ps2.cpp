@@ -1,6 +1,5 @@
 #include "ps2.hpp"
 #include "keyboard.hpp"
-#include "scheduler/scheduler.hpp"
 
 #include <arch/x64/cpu/cpu.hpp>
 #include <arch/x64/drivers/apic/apic.hpp>
@@ -8,8 +7,10 @@
 #include <kpanic/kpanic.hpp>
 #include <log/log.hpp>
 #include <process/process.hpp>
+#include <scheduler/scheduler.hpp>
 
 namespace x64::drivers::keyboard {
+
 static bool extended_pending = false;
 
 /**
@@ -224,6 +225,7 @@ static bool keyboard_reset()
 }
 
 namespace ps2 {
+
 bool init()
 {
     // Step 1: Check if PS/2 controller exists
@@ -287,8 +289,8 @@ bool init()
     apic::ioapic_route_irq(irq::IRQ_KEYBOARD, irq::VECTOR_KEYBOARD);
     irq::register_irq_handler(irq::VECTOR_KEYBOARD, keyboard_interrupt_handler);
 
-    log::info("PS/2 keyboard initialized");
     return true;
 }
+
 }
 }

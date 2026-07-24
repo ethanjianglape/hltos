@@ -149,8 +149,6 @@ void Process::exec_elf64(std::uint8_t* buffer, std::size_t size, char* const arg
         auto mem_size = header.p_memsz;
         auto offset = header.p_offset;
 
-        log::debugf("mapping user mem at {} len = {}", fmt::hex{virt}, mem_size);
-
         arch::vmm::map_user_pages(new_pml4, virt, mem_size);
 
         memcpy(reinterpret_cast<void*>(virt),
@@ -235,9 +233,7 @@ ELF64Process::ELF64Process(std::uint8_t* buffer, std::size_t size)
         auto mem_size = header.p_memsz;
         auto offset = header.p_offset;
 
-        log::debugf("mapping user mem at {} len = {}", fmt::hex{virt}, mem_size);
-
-        arch::vmm::map_pages(pml4, virt, mem_size, arch::vmm::PAGE_USER | arch::vmm::PAGE_WRITE);
+        arch::vmm::map_user_pages(pml4, virt, mem_size);
 
         memcpy(reinterpret_cast<void*>(virt),
             reinterpret_cast<void*>(buffer + offset),

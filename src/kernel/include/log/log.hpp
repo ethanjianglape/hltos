@@ -103,4 +103,11 @@ void debugf(kstring_view format, T first, Rest... rest)
     kprintln();
 }
 
+inline void section(const char* str)
+{
+    info("================================");
+    info('=', str);
+    info("================================");
+}
+
 }

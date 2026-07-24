@@ -33,9 +33,6 @@ void kernel_main()
     x64::drivers::serial::init();
     x64::drivers::tsc::init();
 
-    log::info("hltOS booted into kernel_main() using Limine.");
-    log::info("Serial ouput on COM1 initialized");
-
     boot::init();
 
     x64::drivers::pic::init();
@@ -47,24 +44,12 @@ void kernel_main()
     x64::trap::init();
     x64::percpu::init();
 
-    log::success("all core kernel features initialized!");
-
-    x64::cpu::dump();
-
-    auto* devfs = new fs::devfs::DevFileSystem{};
-    auto* tmpfs = new fs::tmpfs::TmpFileSystem{};
-    auto* procfs = new fs::procfs::ProcFileSystem{};
-
-    fs::mount("/dev", devfs, nullptr);
-    fs::mount("/tmp", tmpfs, nullptr);
-    fs::mount("/proc", procfs, nullptr);
+    console::init();
+    fs::init();
 
 #ifdef KERNEL_TESTS
     test::run_all();
 #endif
-
-    console::init();
-    fs::devfs::init_tty();
 
     x64::percpu::enable_preemption();
     x64::cpu::sti();

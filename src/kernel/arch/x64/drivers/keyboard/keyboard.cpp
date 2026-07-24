@@ -3,6 +3,7 @@
 #include <containers/klist.hpp>
 #include <containers/kvector.hpp>
 #include <exclusive/kspinlock_irqsave.hpp>
+#include <kpanic/kpanic.hpp>
 #include <log/log.hpp>
 
 namespace x64::drivers::keyboard {
@@ -81,12 +82,11 @@ KeyEvent* read()
 
 void init()
 {
-    log::init_start("Keyboard");
-
     if (!ps2::init()) {
-        log::warn("PS/2 keyboard initialization failed");
+        kpanic("PS/2 keyboard initialization failed");
     }
 
-    log::init_end("Keyboard");
+    log::info("keyboard: PS/2 keyboard initialized");
 }
+
 }

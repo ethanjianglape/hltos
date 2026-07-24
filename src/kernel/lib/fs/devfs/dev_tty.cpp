@@ -1,3 +1,4 @@
+#include "kassert/kassert.hpp"
 #include <arch.hpp>
 #include <console/console.hpp>
 #include <containers/kstring.hpp>
@@ -355,15 +356,10 @@ void run_tty_program(const kstring& name)
 {
     fs::FileDescriptor* fd = fs::open(name.c_str(), 0);
 
-    if (!fd) {
-        log::warn("run_tty_program: failed to open ", name);
-        return;
-    }
+    kassert_not_null(fd);
 
     auto size = fd->inode->size;
     auto* data = new std::uint8_t[size];
-
-    log::debugf("loaded tty program addr={}, size={}", fd, size);
 
     fd->inode->read(fd, data, size);
 
@@ -372,12 +368,8 @@ void run_tty_program(const kstring& name)
 
 void init_tty()
 {
-    log::init_start("/dev/tty");
-
     run_tty_program("/bin/shell");
     // run_tty_program("/bin/musl");
-
-    log::init_end("/dev/tty");
 }
 
 int DevTtyInode::open(FileDescriptor*, int)

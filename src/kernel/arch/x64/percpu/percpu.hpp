@@ -42,4 +42,5 @@ PerCPU* get();
 
 process::Process* idle_process();
 process::Process* current_process();
+
 }

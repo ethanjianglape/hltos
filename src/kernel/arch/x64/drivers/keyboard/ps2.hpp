@@ -196,10 +196,11 @@ constexpr std::uint8_t RELEASE_MASK = 0x80;
 // =========================================================================
 
 namespace ps2 {
-/**
-     * @brief Initializes the PS/2 controller and keyboard.
-     * @return true if initialization successful.
-     */
+
+/// @brief Initializes the PS/2 controller and keyboard.
+/// @return true if initialization successful.
+///
 bool init();
 }
+
 }

@@ -204,7 +204,7 @@ namespace boot {
 
 void init()
 {
-    log::info("Parsing Limine headers");
+    log::info("limine: parsing headers");
 
     validate_limine_responses();
     init_memory();

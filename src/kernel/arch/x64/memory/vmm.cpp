@@ -389,6 +389,13 @@ void map_pages(PML4E* pml4, std::uintptr_t virt_addr, std::size_t bytes, int fla
     std::uintptr_t page_end = (virt_addr + bytes + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
     std::size_t num_pages = (page_end - page_start) / PAGE_SIZE;
 
+    log::infof("VMM: mapping pages @ [{} - {}] flags = {} ({} pages, {} bytes)",
+        fmt::hex{virt_addr},
+        fmt::hex{virt_addr + bytes},
+        fmt::bin{flags},
+        num_pages,
+        bytes);
+
     kassert(is_page_aligned(page_start));
     kassert(is_page_aligned(page_end));
     kassert(page_start < page_end);
@@ -405,6 +412,7 @@ void map_pages(PML4E* pml4, std::uintptr_t virt_addr, std::size_t bytes, int fla
 
 void map_user_pages(PML4E* pml4, std::uintptr_t virt, std::size_t bytes)
 {
+
     map_pages(pml4, virt, bytes, PAGE_USER | PAGE_WRITE);
 }
 

@@ -65,8 +65,6 @@ kvector<char> empty_line()
 
 void init()
 {
-    log::init_start("Console");
-
     cursor_col = 0;
     cursor_row = 0;
     viewport_offset = 0;
@@ -76,11 +74,9 @@ void init()
 
     cursor_enabled = true;
 
-    log::info("Console size: ", screen_cols, "x", screen_rows, " characters");
-    log::info("Console font: ", fonts::FONT_WIDTH, "x", fonts::FONT_HEIGHT, " pixels");
-    log::info("Console cursor set to (", cursor_col, ", ", cursor_row, ")");
-
-    log::init_end("Console");
+    log::infof("console: {}x{} characters", screen_cols, screen_rows);
+    log::infof("console: font {}x{} pixels", fonts::FONT_WIDTH, fonts::FONT_HEIGHT);
+    log::infof("console: cursor set to ({}, {})", cursor_col, cursor_row);
 }
 
 void enable_cursor()
