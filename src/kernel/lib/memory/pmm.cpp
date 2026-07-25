@@ -27,6 +27,17 @@
 
 namespace pmm {
 
+// For now, the PMM will have a hard coded upper limit of 2GiB
+// attempting to access beyond 2GiB will just truncate
+constexpr std::size_t MAX_MEMORY_BYTES = 2'147'483'648;
+constexpr std::size_t FRAME_SIZE = arch::vmm::PAGE_SIZE;
+constexpr std::size_t MAX_NUM_FRAMES = MAX_MEMORY_BYTES / FRAME_SIZE;
+
+constexpr std::size_t FRAME_BITMAP_ENTRY_SIZE = sizeof(std::size_t) * 8;
+constexpr std::size_t FRAME_BITMAP_SIZE = MAX_NUM_FRAMES / FRAME_BITMAP_ENTRY_SIZE;
+constexpr std::size_t FRAME_FREE = 0;
+constexpr std::size_t FRAME_USED = 1;
+
 // Bitmap where each bit represents a 4KiB frame (0 = free, 1 = used)
 static std::size_t frame_bitmap[FRAME_BITMAP_SIZE];
 static std::size_t frame_bitmap_start;
@@ -162,19 +173,6 @@ void free_frame(std::uintptr_t phys)
     g_pmm_spinlock.unlock();
 }
 
-void free_contiguous_frames(std::uintptr_t phys, std::size_t count)
-{
-    g_pmm_spinlock.lock();
-
-    std::size_t frame = phys / FRAME_SIZE;
-
-    for (std::size_t i = 0; i < count; i++) {
-        set_frame_free(frame + i);
-    }
-
-    g_pmm_spinlock.unlock();
-}
-
 /**
  * @brief Allocates a single 4KiB physical frame.
  *
@@ -205,46 +203,4 @@ std::uintptr_t alloc_frame()
     kpanic("PMM: Out of physical memory");
 }
 
-/**
- * @brief Allocates multiple contiguous physical frames.
- *
- * Scans the entire bitmap for a run of consecutive free frames.
- * Slower than single-frame allocation but necessary for DMA buffers
- * and other hardware that requires physically contiguous memory.
- *
- * @param num_frames Number of contiguous frames to allocate.
- * @return Physical address of the first frame.
- * @throws Panics if not enough contiguous frames are available.
- */
-void* alloc_contiguous_frames(std::size_t num_frames)
-{
-    g_pmm_spinlock.lock();
-
-    std::size_t consecutive = 0;
-    std::size_t start_frame = 0;
-
-    for (std::size_t frame = 0; frame < total_frames; frame++) {
-        if (is_frame_free(frame)) {
-            if (consecutive == 0) {
-                start_frame = frame;
-            }
-
-            consecutive++;
-
-            if (consecutive >= num_frames) {
-                for (std::size_t i = start_frame; i < start_frame + num_frames; i++) {
-                    set_frame_used(i);
-                }
-
-                g_pmm_spinlock.unlock();
-
-                return reinterpret_cast<void*>(start_frame * FRAME_SIZE);
-            }
-        } else {
-            consecutive = 0;
-        }
-    }
-
-    kpanic("PMM: Out of physical memory");
-}
 }

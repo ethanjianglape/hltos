@@ -87,14 +87,14 @@ void test_to_string_hex_zero()
 {
     char buf[128];
     const char* result = fmt::to_string(static_cast<std::uintmax_t>(0), buf, fmt::NumberFormat::HEX);
-    test::assert_true(strcmp(result, "0") == 0, "to_string(0, HEX) returns \"0\"");
+    test::assert_true(strcmp(result, "0x0000") == 0, "to_string(0, HEX) returns \"0x0000\"");
 }
 
 void test_to_string_hex_value()
 {
     char buf[128];
     const char* result = fmt::to_string(static_cast<std::uintmax_t>(255), buf, fmt::NumberFormat::HEX);
-    test::assert_true(strcmp(result, "0x000000FF") == 0, "to_string(255, HEX) returns \"0x000000FF\"");
+    test::assert_true(strcmp(result, "0x00FF") == 0, "to_string(255, HEX) returns \"0x000FF\"");
 }
 
 void test_to_string_hex_large()
@@ -108,21 +108,21 @@ void test_to_string_hex_wrapper()
 {
     char buf[128];
     const char* result = fmt::to_string(fmt::hex{0xABCD}, buf);
-    test::assert_true(strcmp(result, "0x0000ABCD") == 0, "to_string(hex{0xABCD}) correct");
+    test::assert_true(strcmp(result, "0xABCD") == 0, "to_string(hex{0xABCD}) correct");
 }
 
 void test_to_string_bin_zero()
 {
     char buf[128];
     const char* result = fmt::to_string(static_cast<std::uintmax_t>(0), buf, fmt::NumberFormat::BIN);
-    test::assert_true(strcmp(result, "0") == 0, "to_string(0, BIN) returns \"0\"");
+    test::assert_true(strcmp(result, "0b0000") == 0, "to_string(0, BIN) returns \"0b0000\"");
 }
 
 void test_to_string_bin_value()
 {
     char buf[128];
     const char* result = fmt::to_string(static_cast<std::uintmax_t>(5), buf, fmt::NumberFormat::BIN);
-    test::assert_true(strcmp(result, "0b00000101") == 0, "to_string(5, BIN) returns \"0b00000101\"");
+    test::assert_true(strcmp(result, "0b0101") == 0, "to_string(5, BIN) returns \"0b0101\"");
 }
 
 void test_to_string_bin_wrapper()
@@ -136,21 +136,21 @@ void test_to_string_oct_zero()
 {
     char buf[128];
     const char* result = fmt::to_string(static_cast<std::uintmax_t>(0), buf, fmt::NumberFormat::OCT);
-    test::assert_true(strcmp(result, "0") == 0, "to_string(0, OCT) returns \"0\"");
+    test::assert_true(strcmp(result, "0o0000") == 0, "to_string(0, OCT) returns \"0o0000\"");
 }
 
 void test_to_string_oct_value()
 {
     char buf[128];
     const char* result = fmt::to_string(static_cast<std::uintmax_t>(64), buf, fmt::NumberFormat::OCT);
-    test::assert_true(strcmp(result, "0100") == 0, "to_string(64, OCT) returns \"0100\"");
+    test::assert_true(strcmp(result, "0o0100") == 0, "to_string(64, OCT) returns \"0o0100\"");
 }
 
 void test_to_string_oct_wrapper()
 {
     char buf[128];
     const char* result = fmt::to_string(fmt::oct{511}, buf);
-    test::assert_true(strcmp(result, "0777") == 0, "to_string(oct{511}) returns \"0777\"");
+    test::assert_true(strcmp(result, "0o0777") == 0, "to_string(oct{511}) returns \"0o0777\"");
 }
 
 void test_to_string_pointer()

@@ -28,7 +28,9 @@ std::uint32_t get_screen_width();
 std::uint32_t get_screen_height();
 
 void invert_rec(std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t h);
-void draw_rec(std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t h, std::uint32_t color);
+void draw_line(std::uint32_t x0, std::uint32_t y0, std::uint32_t x1, std::uint32_t y1, std::uint32_t color);
+void outline_rect(std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t h, std::uint32_t color);
+void fill_rect(std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t h, std::uint32_t color);
 void draw_glyph(const std::uint32_t x, const std::uint32_t y, std::uint32_t w, std::uint32_t h, const std::uint8_t* glyph, std::uint32_t fg, std::uint32_t bg);
 
 void clear_black();

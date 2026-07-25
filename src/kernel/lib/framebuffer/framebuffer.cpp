@@ -1,3 +1,4 @@
+#include "algo/algo.hpp"
 #include <arch.hpp>
 #include <console/console.hpp>
 #include <crt/crt.h>
@@ -56,7 +57,7 @@ static void redraw()
 
 static void redraw_kthread()
 {
-    constexpr int target_fps = 30;
+    constexpr int target_fps = 60;
     constexpr int ms_per_frame = 1000 / target_fps;
 
     while (true) {
@@ -139,7 +140,42 @@ void invert_rec(std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t
     g_fb_spinlock.unlock();
 }
 
-void draw_rec(std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t h, std::uint32_t color)
+void draw_line(std::uint32_t x0, std::uint32_t y0, std::uint32_t x1, std::uint32_t y1, std::uint32_t color)
+{
+}
+
+void outline_rect(std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t h, std::uint32_t color)
+{
+    g_fb_spinlock.lock();
+
+    const auto blue = color & 0xFF;
+    const auto green = (color >> 8) & 0xFF;
+    const auto red = (color >> 16) & 0xFF;
+
+    // top
+    for (std::uint32_t px = x; px < x + w; px++) {
+        draw_pixel(px, y, red, green, blue);
+    }
+
+    // bottom
+    for (std::uint32_t px = x; px < x + w; px++) {
+        draw_pixel(px, y + h, red, green, blue);
+    }
+
+    // left
+    for (std::uint32_t py = y; py < y + h; py++) {
+        draw_pixel(x, py, red, green, blue);
+    }
+
+    // right
+    for (std::uint32_t py = y; py < y + h; py++) {
+        draw_pixel(x + w, py, red, green, blue);
+    }
+
+    g_fb_spinlock.unlock();
+}
+
+void fill_rect(std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t h, std::uint32_t color)
 {
     g_fb_spinlock.lock();
 

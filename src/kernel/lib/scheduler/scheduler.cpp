@@ -4,7 +4,6 @@
 #include <log/log.hpp>
 #include <process/process.hpp>
 #include <scheduler/scheduler.hpp>
-#include <timer/timer.hpp>
 
 #include <cerrno>
 #include <cstdint>
@@ -109,7 +108,7 @@ void Scheduler::wake_parents(int pid)
 ///
 void Scheduler::wake_sleepers()
 {
-    const std::uintmax_t ticks = timer::get_ticks();
+    const std::uint64_t time_ms = arch::drivers::tsc::get_time_ms();
 
     for (std::size_t i = 0; i < _processes.size(); i++) {
         process::Process* p = _processes[i];
@@ -124,7 +123,7 @@ void Scheduler::wake_sleepers()
             continue;
         }
 
-        if (p->wake_time_ms == 0 || ticks < p->wake_time_ms) {
+        if (p->wake_time_ms == 0 || time_ms < p->wake_time_ms) {
             continue;
         }
 
@@ -345,7 +344,7 @@ int Scheduler::yield_to_child(int child_pid)
 void Scheduler::yield_sleep(std::uint64_t sleep_time_ms)
 {
     process::Process* current = arch::percpu::current_process();
-    current->sleep_until(timer::get_ticks() + sleep_time_ms);
+    current->sleep_until(arch::drivers::tsc::get_time_ms() + sleep_time_ms);
     yield_blocked(process::WaitReason::SLEEP);
 }
 

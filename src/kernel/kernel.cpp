@@ -1,3 +1,4 @@
+
 #include <arch/x64/cpu/cpu.hpp>
 #include <arch/x64/drivers/apic/apic.hpp>
 #include <arch/x64/drivers/keyboard/keyboard.hpp>
@@ -17,6 +18,7 @@
 #include <fs/devfs/devfs.hpp>
 #include <fs/procfs/procfs.hpp>
 #include <fs/tmpfs/tmpfs.hpp>
+#include <gui/gui.hpp>
 #include <log/log.hpp>
 #include <scheduler/scheduler.hpp>
 #include <timer/timer.hpp>
@@ -46,6 +48,7 @@ void kernel_main()
 
     console::init();
     fs::init();
+    gui::init();
 
 #ifdef KERNEL_TESTS
     test::run_all();

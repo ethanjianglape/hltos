@@ -215,7 +215,7 @@ void draw_character_at(char c, std::size_t row, std::size_t col, std::uint32_t f
     const std::uint32_t pixel_y = row * fonts::FONT_HEIGHT;
 
     if (c == ' ') {
-        fb::draw_rec(pixel_x, pixel_y, fonts::FONT_WIDTH, fonts::FONT_HEIGHT, bg);
+        fb::fill_rect(pixel_x, pixel_y, fonts::FONT_WIDTH, fonts::FONT_HEIGHT, bg);
         return;
     }
 
