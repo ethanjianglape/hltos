@@ -59,41 +59,41 @@ inline void print_one(char c)
 
 inline void print_one(std::integral auto num)
 {
-    char buffer[32];
+    char buffer[128];
     serial::puts(fmt::to_string(num, buffer));
 }
 
 template <std::integral T>
 inline void print_one(fmt::hex<T> h)
 {
-    char buffer[32];
+    char buffer[128];
     serial::puts(fmt::to_string(h, buffer));
 }
 
 template <fmt::ptr_type T>
 inline void print_one(fmt::hex<T> h)
 {
-    char buffer[32];
+    char buffer[128];
     serial::puts(fmt::to_string(h, buffer));
 }
 
 template <std::integral T>
 inline void print_one(fmt::bin<T> b)
 {
-    char buffer[32];
+    char buffer[128];
     serial::puts(fmt::to_string(b, buffer));
 }
 
 template <std::integral T>
 inline void print_one(fmt::oct<T> o)
 {
-    char buffer[32];
+    char buffer[128];
     serial::puts(fmt::to_string(o, buffer));
 }
 
 inline void print_one(fmt::ptr_type auto ptr)
 {
-    char buffer[32];
+    char buffer[128];
     serial::puts(fmt::to_string(ptr, buffer));
 }
 }

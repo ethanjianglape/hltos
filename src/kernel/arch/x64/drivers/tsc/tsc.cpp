@@ -55,7 +55,8 @@ std::uint64_t get_tsc_freq()
     return tsc_freq;
 }
 
-static bool check_support()
+// Invariant TSC support is determined by CPUID.0x80000007.EDX[8]
+static bool check_invariant_tsc_support()
 {
     std::uint32_t eax;
     std::uint32_t edx;
@@ -67,7 +68,7 @@ static bool check_support()
 
 void init()
 {
-    if (!check_support()) {
+    if (!check_invariant_tsc_support()) {
         kpanic("Invariant TSC not available");
     }
 

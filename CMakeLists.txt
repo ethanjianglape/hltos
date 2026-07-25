@@ -37,7 +37,7 @@ add_compile_options(
   $<$<COMPILE_LANGUAGE:C,CXX>:-Wall>
   $<$<COMPILE_LANGUAGE:C,CXX>:-Wextra>
   $<$<COMPILE_LANGUAGE:C,CXX>:-g>
-  $<$<COMPILE_LANGUAGE:C,CXX>:-O1>
+  $<$<COMPILE_LANGUAGE:C,CXX>:-O0>
   $<$<COMPILE_LANGUAGE:ASM>:--64>
 )
 

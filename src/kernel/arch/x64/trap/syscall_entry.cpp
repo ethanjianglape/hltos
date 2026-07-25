@@ -299,9 +299,10 @@ void init()
     cpu::wrmsr(MSR_SFMASK, sfmask);
     cpu::wrmsr(MSR_EFER, efer);
 
+    log::infof("syscall: LSTAR  @ {}", fmt::hex{lstar});
     log::infof("syscall: STAR   = {}", fmt::hex{star});
-    log::infof("syscall: LSTAR  = {}", fmt::hex{lstar});
-    log::infof("syscall: SFMASK = {}", fmt::hex{sfmask});
-    log::infof("syscall: EFER   = {}", fmt::hex{efer});
+    log::infof("syscall: SFMASK = {}", fmt::bin{sfmask});
+    log::infof("syscall: EFER   = {}", fmt::bin{efer});
 }
+
 }

@@ -124,6 +124,7 @@ extern "C" void load_gdt(x64::gdt::Gdtr* ptr);
 extern "C" void load_tss();
 
 namespace x64::gdt {
+
 static GdtTable gdt_table;
 static Gdtr gdtr;
 static TssEntry tss;
@@ -131,7 +132,7 @@ static TssEntry tss;
 // When transitioning from user to kernel code, this is the stack
 // that the TSS will point to in TSS.RSP0. For now it is just a static
 // 16KiB array.
-alignas(16) static std::uint8_t kernel_stack[4096 * 4];
+alignas(4096) static std::uint8_t kernel_stack[4096 * 4];
 
 /**
  * @brief Constructs a GDT entry from its component fields.
@@ -225,8 +226,9 @@ void init_tss()
     tss.rsp0 = reinterpret_cast<std::uint64_t>(kernel_stack) + sizeof(kernel_stack);
     tss.iopb_offset = sizeof(TssEntry);
 
-    log::infof("GDT: TSS kernel_stack     @ {}", fmt::hex{reinterpret_cast<uint64_t>(kernel_stack)});
-    log::infof("GDT: TSS kernel_stack top @ {}", fmt::hex{reinterpret_cast<uint64_t>(kernel_stack + sizeof(kernel_stack))});
+    log::infof("GDT: TSS kernel_stack @ [{} - {}]",
+        fmt::hex{kernel_stack},
+        fmt::hex{tss.rsp0});
 }
 
 /**

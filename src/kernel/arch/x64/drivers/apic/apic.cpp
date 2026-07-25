@@ -112,6 +112,49 @@
 
 namespace x64::drivers::apic {
 
+// Local APIC registers (offset from base address 0xFEE00000)
+constexpr std::uint32_t LAPIC_ID = 0x0020;               // Local APIC ID
+constexpr std::uint32_t LAPIC_VERSION = 0x0030;          // Local APIC Version
+constexpr std::uint32_t LAPIC_TPR = 0x0080;              // Task Priority Register
+constexpr std::uint32_t LAPIC_EOI = 0x00B0;              // End of Interrupt
+constexpr std::uint32_t LAPIC_SPURIOUS = 0x00F0;         // Spurious Interrupt Vector Register
+constexpr std::uint32_t LAPIC_ESR = 0x0280;              // Error Status Register
+constexpr std::uint32_t LAPIC_ICR_LOW = 0x0300;          // Interrupt Command Register (low)
+constexpr std::uint32_t LAPIC_ICR_HIGH = 0x0310;         // Interrupt Command Register (high)
+constexpr std::uint32_t LAPIC_TIMER = 0x0320;            // LVT Timer Register
+constexpr std::uint32_t LAPIC_TIMER_INIT_COUNT = 0x0380; // Timer Initial Count
+constexpr std::uint32_t LAPIC_TIMER_CURRENT = 0x0390;    // Timer Current Count
+constexpr std::uint32_t LAPIC_TIMER_DIVIDE = 0x03E0;     // Timer Divide Configuration
+constexpr std::uint32_t APIC_LVT_INT_MASKED = 0x10000;
+
+constexpr std::uint32_t TIMER_MODE_ONESHOT = 0;
+constexpr std::uint32_t TIMER_MODE_PERIODIC = (1 << 17); // 0x20000;
+constexpr std::uint32_t TIMER_MODE_TSC_DEADLINE = (1 << 18);
+constexpr std::uint32_t TIMER_DIV_BY_16 = 0x3;
+
+// LAPIC base address (standard location)
+constexpr std::uint32_t LAPIC_BASE_ADDR = 0xFEE00000;
+
+// Spurious interrupt vector register bits
+constexpr std::uint32_t LAPIC_SPURIOUS_ENABLE = 0x100; // Bit 8: APIC Software Enable/Disable
+
+// MSR for APIC base address
+constexpr std::uint32_t MSR_APIC_BASE = 0x1B;
+constexpr std::uint32_t MSR_APIC_BASE_ENABLE = 0x800; // Bit 11: Enable Local APIC
+
+constexpr std::uint32_t IA32_TSC_DEADLINE = 0x6E0;
+
+// CPUID feature flags
+constexpr std::uint32_t CPUID_FEAT_EDX_APIC = (1 << 9); // APIC available
+
+// I/O APIC registers (indirect access via IOREGSEL/IOWIN)
+constexpr std::uintptr_t IOAPIC_IOREGSEL = 0x00; // Register select (write reg number here)
+constexpr std::uintptr_t IOAPIC_IOWIN = 0x10;    // Data window (read/write reg value here)
+
+// I/O APIC Redirection Table entries (each pin has 2 32-bit registers)
+// IOREDTBL[n] = base + 2*n, where n is the pin number (0-23)
+constexpr std::uint32_t IOAPIC_REDTBL_BASE = 0x10; // First redirection entry
+
 static std::uint64_t interrupt_deadline;
 static std::uint64_t interrupt_delta;
 
@@ -168,6 +211,7 @@ constexpr std::uint32_t IOAPIC_REDTBL_HI(std::uint32_t pin) { return IOAPIC_REDT
  * @param reg Register offset from the LAPIC base address.
  * @return The 32-bit value read from the register.
  */
+[[gnu::unused]]
 static inline std::uint32_t lapic_read(std::uint32_t reg)
 {
     return *reinterpret_cast<volatile std::uint32_t*>(lapic_virt_base + reg);
@@ -180,7 +224,9 @@ static inline std::uint32_t lapic_read(std::uint32_t reg)
  */
 static inline void lapic_write(std::uint32_t reg, std::uint32_t value)
 {
-    *reinterpret_cast<volatile std::uint32_t*>(lapic_virt_base + reg) = value;
+    volatile auto* addr = reinterpret_cast<volatile std::uint32_t*>(lapic_virt_base + reg);
+
+    *addr = value;
 }
 
 // =========================================================================
@@ -205,9 +251,11 @@ static inline void lapic_write(std::uint32_t reg, std::uint32_t value)
  * @param reg Register number to read from.
  * @return The 32-bit value read from the register.
  */
-[[gnu::used]]
+[[gnu::unused]]
 static inline std::uint32_t ioapic_read(volatile std::uint8_t* base, std::uint32_t reg)
 {
+    kassert_not_null(base);
+
     *reinterpret_cast<volatile std::uint32_t*>(base + IOAPIC_IOREGSEL) = reg;
     return *reinterpret_cast<volatile std::uint32_t*>(base + IOAPIC_IOWIN);
 }
@@ -217,13 +265,11 @@ static inline std::uint32_t ioapic_read(volatile std::uint8_t* base, std::uint32
  * @param reg Register number to write to.
  * @param value The 32-bit value to write.
  */
-[[gnu::used]]
 static inline void ioapic_write(volatile std::uint8_t* base, std::uint32_t reg, std::uint32_t value)
 {
-    if (base == nullptr) {
-        log::error("Attempt to write to IOApic NULL address");
-        return;
-    }
+    kassert_not_null(base);
+
+    log::debugf("IOAPIC: writing value {} to register {}", fmt::hex{value}, reg);
 
     *reinterpret_cast<volatile std::uint32_t*>(base + IOAPIC_IOREGSEL) = reg;
     *reinterpret_cast<volatile std::uint32_t*>(base + IOAPIC_IOWIN) = value;
@@ -371,6 +417,80 @@ void ioapic_route_irq(std::uint8_t irq, std::uint8_t vector)
     ioapic_write(ioapic_addr, IOAPIC_REDTBL_HI(pin), static_cast<std::uint32_t>(entry >> 32));
 }
 
+/// @brief Timer interrupt handler called every LAPIC timer tick.
+///
+/// Signals End of Interrupt, runs the generic per-tick handlers (assumed to
+/// all return promptly within this same tick), then runs the scheduler's
+/// preemption logic as a separate, explicit last step.
+///
+/// @param frame the stack frame generated by this interrupt
+///
+static void apic_timer_handler(irq::InterruptFrame* frame)
+{
+    // TSC deadline mode only fires a single time once the current value of the TSC
+    // is >= interrupt_deadline, so to continue triggering interrupts, we need to
+    // update interrupt_deadline every time we receive an interrupt
+    interrupt_deadline += interrupt_delta;
+    cpu::wrmsr(IA32_TSC_DEADLINE, interrupt_deadline);
+
+    // EOI must be sent to allow this LAPIC to fire another interrupt in the future, this
+    // must be done before calling the scheduler because the scheduler may or may not return
+    send_eoi();
+    timer::tick(frame);
+    scheduler::tick();
+}
+
+/// @brief Calibrates and initializes the LAPIC timer for periodic interrupts.
+///
+/// The LAPIC has a built-in timer that can generate periodic interrupts.
+/// This is essential for preemptive multitasking (the scheduler needs a
+/// regular "tick" to switch between processes).
+///
+/// **The Problem:**
+/// The LAPIC timer runs off the CPU's bus clock, which varies by system.
+/// A 3 GHz CPU might have a 100 MHz bus clock, or 133 MHz, or something
+/// else entirely. We can't just hardcode a timer value.
+///
+/// **The Solution:**
+/// Utilize TSC deadline mode to calibrate the LAPIC timer. This causes the
+/// LAPIC to fire of an interrupt as soon as the TSC reaches a
+/// fixed value. The frequency of the TSC is already known at this point, so
+/// we can calcuate the exact number of TSC ticks needed to produce a 1ms pulse.
+///
+/// see tsc.cpp for more information on the TSC
+///
+/// **Timer Registers:**
+///   - LAPIC_TIMER (LVT): Mode and vector configuration
+///   - IA32_TSC_DEADLINE: Sets the value the TSC must be at for the next interrupt to fire
+///
+/// **LVT Timer Register bits:**
+///   - Bits 0-7:   Interrupt vector
+///   - Bit 16:     Mask (1 = disabled)
+///   - Bits 17-18: Timer mode:
+///       - 00 = One-shot (fire once, stop)
+///       - 01 = Periodic (auto-reload and repeat)
+///       - 10 = TSC-Deadline (this is the one we will use)
+///
+static void timer_init()
+{
+    // configure the LAPIC to use IRQ 0 for interrupts and enter TSC deadline mode
+    lapic_write(LAPIC_TIMER, irq::VECTOR_TIMER | TIMER_MODE_TSC_DEADLINE);
+    irq::register_irq_handler(irq::VECTOR_TIMER, apic_timer_handler);
+
+    // calculate the number of TSC ticks needed to achieve the desired interrupt frequency
+    // based on the known frequency of the TSC (usually around 3-4Ghz)
+    constexpr std::uint64_t interrupt_frequency_ms = 1;
+    constexpr std::uint64_t interrupt_frequency_ns = interrupt_frequency_ms * 1000000;
+
+    interrupt_delta = (tsc::get_tsc_freq() * interrupt_frequency_ns) / 1000000000;
+    interrupt_deadline = interrupt_delta;
+
+    // The TSC deadline value is written to an MSR, not the LAPIC itself
+    cpu::wrmsr(IA32_TSC_DEADLINE, interrupt_deadline);
+
+    log::infof("APIC: TSC deadline mode @ {}ms ({} ticks)", interrupt_frequency_ms, interrupt_delta);
+}
+
 /**
  * @brief Initializes the APIC subsystem (Local APIC and LAPIC timer).
  *
@@ -386,8 +506,6 @@ void ioapic_route_irq(std::uint8_t irq, std::uint8_t vector)
  *
  * @pre The MADT must be parsed before calling this function.
  * @pre The legacy PIC must be disabled (see pic.cpp).
- *
- * @throws Panics if APIC is not supported or LAPIC address is not available.
  */
 void init()
 {
@@ -437,98 +555,4 @@ void init()
     timer_init();
 }
 
-/**
- * @brief Timer interrupt handler called every LAPIC timer tick.
- *
- * Signals End of Interrupt, runs the generic per-tick handlers (assumed to
- * all return promptly within this same tick), then runs the scheduler's
- * preemption logic as a separate, explicit last step.
- *
- * @param vector The interrupt vector number (unused).
- *
- * @warning EOI must happen before scheduler::preempt(), not after.
- *          preempt() may context_switch() directly into a different
- *          process's dormant call stack and not return to this exact
- *          invocation until the originally-interrupted process is
- *          rescheduled — possibly much later. If EOI were sent afterward,
- *          it would never fire for this interrupt, and no further timer
- *          interrupts would ever occur.
- *
- * @note scheduler::preempt() is called directly here rather than through
- *       timer::register_handler() specifically because of the above — that
- *       mechanism is a plain vector of handlers assumed to always return
- *       promptly, which preempt() cannot promise.
- */
-void apic_timer_handler(irq::InterruptFrame* frame)
-{
-    interrupt_deadline += interrupt_delta;
-    cpu::wrmsr(IA32_TSC_DEADLINE, interrupt_deadline);
-
-    send_eoi();
-    timer::tick(frame);
-    scheduler::tick();
-}
-
-/**
- * @brief Calibrates and initializes the LAPIC timer for periodic interrupts.
- *
- * The LAPIC has a built-in timer that can generate periodic interrupts.
- * This is essential for preemptive multitasking (the scheduler needs a
- * regular "tick" to switch between processes).
- *
- * **The Problem:**
- * The LAPIC timer runs off the CPU's bus clock, which varies by system.
- * A 3 GHz CPU might have a 100 MHz bus clock, or 133 MHz, or something
- * else entirely. We can't just hardcode a timer value.
- *
- * **The Solution:**
- * Calibrate the timer using a KNOWN time source. The legacy PIT (8254)
- * runs at exactly 1.193182 MHz on all PCs - it's been this way since 1981.
- * We use the PIT to measure how many LAPIC ticks occur in a known time.
- *
- * **Timer Registers:**
- *   - LAPIC_TIMER_DIVIDE:     Clock divider (1, 2, 4, 8, 16, 32, 64, or 128)
- *   - LAPIC_TIMER_INIT_COUNT: Starting count value (counts DOWN to 0)
- *   - LAPIC_TIMER_CURRENT:    Current count value (read-only)
- *   - LAPIC_TIMER (LVT):      Mode and vector configuration
- *
- * **LVT Timer Register bits:**
- *   - Bits 0-7:   Interrupt vector
- *   - Bit 16:     Mask (1 = disabled)
- *   - Bits 17-18: Timer mode:
- *       - 00 = One-shot (fire once, stop)
- *       - 01 = Periodic (auto-reload and repeat)
- *       - 10 = TSC-Deadline (advanced, we don't use)
- *
- * @post Timer interrupts will fire every 10ms, calling apic_timer_handler().
- */
-void timer_init()
-{
-    // Step 4: Configure periodic mode with calibrated count
-    //
-    // We now know that 'ticks_elapsed' ticks = calibration_ms milliseconds.
-    // Setting the initial count to this value will give us an interrupt
-    // every calibration_ms milliseconds.
-    //
-    // In periodic mode, the counter automatically reloads when it hits 0,
-    // generating a continuous stream of interrupts at our desired rate.
-    lapic_write(LAPIC_TIMER, irq::VECTOR_TIMER | TIMER_MODE_TSC_DEADLINE);
-    // lapic_write(LAPIC_TIMER_DIVIDE, TIMER_DIV_BY_16);
-    // lapic_write(LAPIC_TIMER_INIT_COUNT, ticks_elapsed);
-
-    constexpr std::uint64_t interrupt_duration_ms = 1;
-    constexpr std::uint64_t interrupt_duration_ns = interrupt_duration_ms * 1000000;
-
-    interrupt_delta = (tsc::get_tsc_freq() * interrupt_duration_ns) / 1000000000;
-    interrupt_deadline = interrupt_delta;
-
-    // Step 5: Register our handler for timer interrupts.
-    // From this point on, apic_timer_handler is called every calibration_ms (10ms)
-    // automatically - the hardware generates interrupts on its own, no polling needed.
-    // This is the heartbeat that drives preemptive scheduling.
-    irq::register_irq_handler(irq::VECTOR_TIMER, apic_timer_handler);
-    cpu::wrmsr(IA32_TSC_DEADLINE, interrupt_deadline);
-
-    log::infof("APIC: TSC deadline mode delta = {}", interrupt_delta);
-}
 }
