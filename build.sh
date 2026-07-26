@@ -26,8 +26,6 @@ log() {
     echo -e "$1${NC}"
 }
 
-./clean.sh
-
 log_section "Building hltOS"
 
 mkdir -p cmake_build sysroot initramfs/bin

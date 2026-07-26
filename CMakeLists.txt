@@ -66,7 +66,8 @@ add_subdirectory(src/user)
 file(MAKE_DIRECTORY ${SYSROOT}/boot)
 
 add_custom_command(
-  OUTPUT ${CMAKE_BINARY_DIR}/kernel.elf ${CMAKE_BINARY_DIR}/kernel.map ${CMAKE_BINARY_DIR}/.kernel_stamp
+  OUTPUT ${CMAKE_BINARY_DIR}/kernel.elf
+  BYPRODUCTS ${CMAKE_BINARY_DIR}/kernel.map
   COMMAND ${CMAKE_COMMAND} -E rm -f kernel.elf
   COMMAND ${CMAKE_CXX_COMPILER}
   -m64
@@ -85,7 +86,6 @@ add_custom_command(
   -lgcc
   COMMAND ${CMAKE_COMMAND} -E remove -f ${SYSROOT}/boot/kernel.elf
   COMMAND ${CMAKE_COMMAND} -E copy kernel.elf ${SYSROOT}/boot/kernel.elf
-  COMMAND ${CMAKE_COMMAND} -E touch .kernel_stamp
   DEPENDS
   boot_objs kernel_objs crti_obj crtn_obj
   "$<TARGET_OBJECTS:boot_objs>"
@@ -145,7 +145,7 @@ add_custom_command(
   -o ${CMAKE_SOURCE_DIR}/hltos.iso ${SYSROOT}/
   COMMAND ${LIMINE_CMD} bios-install ${CMAKE_SOURCE_DIR}/hltos.iso
   DEPENDS
-  ${CMAKE_BINARY_DIR}/.kernel_stamp
+  ${CMAKE_BINARY_DIR}/kernel.elf
   ${LIMINE_CONF}
   ${INITRAMFS_STATIC_FILES}
   ${CMAKE_SOURCE_DIR}/initramfs/bin/shell
@@ -156,4 +156,5 @@ add_custom_command(
   VERBATIM
 )
 add_custom_target(iso ALL DEPENDS ${CMAKE_SOURCE_DIR}/hltos.iso)
+add_dependencies(iso kernel)
 
