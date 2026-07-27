@@ -53,6 +53,28 @@ std::uint64_t get_tsc_freq()
     return tsc_freq;
 }
 
+// Raw TSC value, with no boot offset applied. This is the domain
+// IA32_TSC_DEADLINE (and the TSC register itself) operates in, so anything
+// that arms hardware or compares against it - the scheduler's sleep
+// deadlines, the APIC timer - should be measured in this, not get_ticks().
+std::uint64_t raw_ticks()
+{
+    return rdtsc();
+}
+
+std::uint64_t ns_to_ticks(std::uint64_t ns)
+{
+    const std::uint64_t secs = ns / 1000000000ULL;
+    const std::uint64_t remainder_ns = ns % 1000000000ULL;
+
+    return secs * tsc_freq + (remainder_ns * tsc_freq) / 1000000000ULL;
+}
+
+std::uint64_t ticks_from_now(std::uint64_t ns)
+{
+    return raw_ticks() + ns_to_ticks(ns);
+}
+
 // Invariant TSC support is determined by CPUID.0x80000007.EDX[8]
 static bool check_invariant_tsc_support()
 {
@@ -64,6 +86,24 @@ static bool check_invariant_tsc_support()
     cpu::cpuid(0x80000007, &eax, &edx);
 
     return (edx & CPUID_FEAT_EDX_INVARIANT_TSC) != 0;
+}
+
+void sleep_ms(std::uint64_t time_ms)
+{
+    const std::uint64_t target = get_time_ms() + time_ms;
+
+    while (get_time_ms() < target) {
+        cpu::hlt();
+    }
+}
+
+void sleep_us(std::uint64_t time_us)
+{
+    const std::uint64_t target = get_time_us() + time_us;
+
+    while (get_time_us() < target) {
+        cpu::hlt();
+    }
 }
 
 void init()

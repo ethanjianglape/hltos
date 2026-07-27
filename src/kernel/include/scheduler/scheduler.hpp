@@ -1,7 +1,8 @@
 #pragma once
 
-#include "exclusive/kspinlock_irqsave.hpp"
 #include <containers/klist.hpp>
+#include <containers/kmin_heap.hpp>
+#include <exclusive/kspinlock_irqsave.hpp>
 #include <process/process.hpp>
 
 #include <cstdint>
@@ -16,6 +17,7 @@ protected:
     kspinlock_irqsave _processes_lock;
 
     klist<process::Process*> _processes;
+    kmin_heap<std::uint64_t, process::Process*> _sleepers;
 
 public:
     Scheduler() = default;
@@ -26,6 +28,8 @@ public:
 
     Scheduler& operator=(Scheduler&) = delete;
     Scheduler& operator=(Scheduler&&) = delete;
+
+    process::Process* get_next_sleeper() const;
 
     virtual process::Process* next_ready_process() = 0;
     virtual process::Process* find_child(process::Process* parent, int pid) = 0;
@@ -50,7 +54,9 @@ public:
     [[noreturn]]
     void yield_new_process();
 
-    void yield_sleep(std::uint64_t sleep_time_ms);
+    void yield_sleep_ms(std::uint64_t sleep_time_ms);
+    void yield_sleep_us(std::uint64_t sleep_time_us);
+    void yield_sleep_ns(std::uint64_t sleep_time_ns);
     void yield_blocked(process::WaitReason reason);
 
     int yield_to_child(int child_pid);

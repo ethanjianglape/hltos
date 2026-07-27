@@ -104,31 +104,31 @@ void Scheduler::wake_parents(int pid)
     }
 }
 
-/// @brief wake all sleeping processes that have a wake_time_ms in the past
+/// @brief wake all sleeping processes that have a wake_time_ticks in the past
 ///
 void Scheduler::wake_sleepers()
 {
-    const std::uint64_t time_ms = arch::drivers::tsc::get_time_ms();
+    const std::uint64_t now_ticks = arch::drivers::tsc::raw_ticks();
 
-    for (std::size_t i = 0; i < _processes.size(); i++) {
-        process::Process* p = _processes[i];
+    while (!_sleepers.empty()) {
+        process::Process* p = _sleepers.peak();
 
-        kassert_not_null(p);
-
-        if (!p->is_blocked()) {
-            continue;
-        }
-
-        if (!p->is_waiting_for(process::WaitReason::SLEEP)) {
-            continue;
-        }
-
-        if (p->wake_time_ms == 0 || time_ms < p->wake_time_ms) {
-            continue;
+        if (now_ticks < p->wake_time_ticks) {
+            break;
         }
 
         p->wake();
+        _sleepers.pop();
     }
+}
+
+process::Process* Scheduler::get_next_sleeper() const
+{
+    if (_sleepers.empty()) {
+        return nullptr;
+    }
+
+    return _sleepers.peak();
 }
 
 /// @brief activate a process on the current cpu
@@ -198,7 +198,7 @@ void Scheduler::reap()
 
     _processes_lock.unlock();
 
-    yield_sleep(REAP_INTERVAL_MS);
+    yield_sleep_ms(REAP_INTERVAL_MS);
 }
 
 /// @brief interrupt the current process to schedule a new one
@@ -341,10 +341,25 @@ int Scheduler::yield_to_child(int child_pid)
 ///
 /// @param sleep_time_ms time in ms to sleep for
 ///
-void Scheduler::yield_sleep(std::uint64_t sleep_time_ms)
+void Scheduler::yield_sleep_ms(std::uint64_t sleep_time_ms)
+{
+    const std::uint64_t sleep_time_us = sleep_time_ms * 1000;
+    const std::uint64_t sleep_time_ns = sleep_time_us * 1000;
+
+    yield_sleep_ns(sleep_time_ns);
+}
+
+void Scheduler::yield_sleep_us(std::uint64_t sleep_time_us)
+{
+    const std::uint64_t sleep_time_ns = sleep_time_us * 1000;
+
+    yield_sleep_ns(sleep_time_ns);
+}
+
+void Scheduler::yield_sleep_ns(std::uint64_t sleep_time_ns)
 {
     process::Process* current = arch::percpu::current_process();
-    current->sleep_until(arch::drivers::tsc::get_time_ms() + sleep_time_ms);
+    current->sleep_until(arch::drivers::tsc::ticks_from_now(sleep_time_ns));
     yield_blocked(process::WaitReason::SLEEP);
 }
 
@@ -358,6 +373,11 @@ void Scheduler::yield_blocked(process::WaitReason reason)
 
     process::Process* current = arch::percpu::current_process();
     current->wait_for(reason);
+
+    if (reason == process::WaitReason::SLEEP) {
+        _sleepers.insert(current->wake_time_ticks, current);
+    }
+
     process::Process* next = next_ready_process();
 
     // find_next_ready_process() wakes all sleeping processes that are past

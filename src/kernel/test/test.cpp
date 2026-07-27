@@ -47,6 +47,12 @@ void run();
 namespace test_klist {
 void run();
 }
+namespace test_kmin_heap {
+void run();
+}
+namespace test_kmax_heap {
+void run();
+}
 namespace test_fmt {
 void run();
 }
@@ -97,6 +103,8 @@ void run_all()
     test_kmalloc::run();
     test_kvector::run();
     test_klist::run();
+    test_kmin_heap::run();
+    test_kmax_heap::run();
     test_kstring::run();
     test_kstring_view::run();
     test_kunique_ptr::run();

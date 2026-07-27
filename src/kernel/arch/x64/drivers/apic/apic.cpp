@@ -97,6 +97,7 @@
 #include "apic.hpp"
 #include "arch/x64/drivers/tsc/tsc.hpp"
 #include "kassert/kassert.hpp"
+#include "process/process.hpp"
 #include <acpi/madt.hpp>
 #include <scheduler/scheduler.hpp>
 #include <timer/timer.hpp>
@@ -431,6 +432,24 @@ static void apic_timer_handler(irq::InterruptFrame* frame)
     // is >= interrupt_deadline, so to continue triggering interrupts, we need to
     // update interrupt_deadline every time we receive an interrupt
     interrupt_deadline += interrupt_delta;
+
+    // If a sleeping process needs to wake before the next periodic tick would
+    // otherwise fire, arm the timer for that deadline instead, so sleepers are
+    // woken precisely rather than waiting for the next 1ms tick to notice them
+    scheduler::Scheduler* sched = scheduler::get_scheduler();
+
+    if (sched) {
+        process::Process* next_sleeper = sched->get_next_sleeper();
+
+        if (next_sleeper) {
+            const std::uint64_t sleeper_deadline = next_sleeper->wake_time_ticks;
+
+            if (sleeper_deadline < interrupt_deadline) {
+                interrupt_deadline = sleeper_deadline;
+            }
+        }
+    }
+
     cpu::wrmsr(IA32_TSC_DEADLINE, interrupt_deadline);
 
     // EOI must be sent to allow this LAPIC to fire another interrupt in the future, this

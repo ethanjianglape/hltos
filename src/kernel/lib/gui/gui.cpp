@@ -116,6 +116,7 @@ gui_render_kthread()
 {
     constexpr int target_fps = 60;
     constexpr int ms_per_frame = 1000 / target_fps;
+    constexpr int us_per_frame = ms_per_frame * 1000;
 
     while (true) {
         framebuffer::clear_black();
@@ -128,7 +129,7 @@ gui_render_kthread()
 
         framebuffer::outline_rect(100, 100, 100, 100, 0x0000FFFF);
 
-        scheduler::get_scheduler()->yield_sleep(ms_per_frame);
+        scheduler::get_scheduler()->yield_sleep_us(us_per_frame);
     }
 }
 
@@ -144,7 +145,7 @@ static void gui_tick_kthread()
             square.move();
         }
 
-        scheduler::get_scheduler()->yield_sleep(ms_per_frame);
+        scheduler::get_scheduler()->yield_sleep_ms(ms_per_frame);
     }
 }
 

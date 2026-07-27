@@ -1,4 +1,5 @@
 #include "algo/algo.hpp"
+#include "arch/x64/drivers/tsc/tsc.hpp"
 #include <arch.hpp>
 #include <console/console.hpp>
 #include <crt/crt.h>
@@ -59,11 +60,13 @@ static void redraw_kthread()
 {
     constexpr int target_fps = 60;
     constexpr int ms_per_frame = 1000 / target_fps;
+    constexpr int us_per_frame = ms_per_frame * 1000;
 
     while (true) {
         redraw();
 
-        scheduler::get_scheduler()->yield_sleep(ms_per_frame);
+        // arch::drivers::tsc::sleep_us(us_per_frame);
+        scheduler::get_scheduler()->yield_sleep_us(us_per_frame);
     }
 }
 
