@@ -40,7 +40,7 @@ void test_free_allows_realloc()
 
     // Allocate again - should succeed (might get same or different frame)
     auto frame2 = pmm::alloc_frame();
-    test::assert_ne(frame2, 0, "allocation after free succeeds");
+    test::assert_ne(frame2, 0ul, "allocation after free succeeds");
     pmm::free_frame(frame2);
 }
 
