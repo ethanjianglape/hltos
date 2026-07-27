@@ -18,49 +18,22 @@ namespace scheduler {
 ///
 /// @return pointer to the next ready process
 ///
-process::Process* RoundRobinScheduler::next_ready_process()
+process::Process* RoundRobinScheduler::next_ready_process(klist<process::Process*>& processes)
 {
     wake_sleepers();
 
-    for (std::size_t i = 0; i < _processes.size(); i++) {
-        process::Process* p = _processes[i];
+    for (std::size_t i = 0; i < processes.size(); i++) {
+        process::Process* p = processes[i];
 
         kassert_not_null(p);
 
         if (p->is_ready()) {
-            _processes.rotate_next();
+            processes.rotate_next();
             return p;
         }
     }
 
     return arch::percpu::idle_process();
 };
-
-process::Process* RoundRobinScheduler::find_child(process::Process* parent, int pid)
-{
-    process::Process* first_match = nullptr;
-
-    for (std::size_t i = 0; i < _processes.size(); i++) {
-        process::Process* p = _processes[i];
-
-        if (pid != -1 && p->pid != pid) {
-            continue;
-        }
-
-        if (p->parent == nullptr || p->parent->pid != parent->pid) {
-            continue;
-        }
-
-        if (p->is_zombie()) {
-            return p;
-        }
-
-        if (first_match == nullptr) {
-            first_match = p;
-        }
-    }
-
-    return first_match;
-}
 
 }

@@ -24,7 +24,7 @@ int sys_fork(arch::trap::SyscallFrame* syscall_frame)
 
     kassert_not_null(created);
 
-    scheduler::get_scheduler()->add_process(created);
+    scheduler::add_process(created);
 
     return created->pid;
 }
@@ -48,7 +48,7 @@ int sys_execve(const char* path, char* argv[], char* envp[])
 
     current->exec_elf64(data, size, argv, envp);
 
-    scheduler::get_scheduler()->yield_new_process();
+    scheduler::yield_new_process();
 }
 
 int sys_vfork()
@@ -61,7 +61,7 @@ int sys_wait4(int pid, int*, int, void*)
 {
     log::debugf("parent pid={} waiting on child pid={}", arch::percpu::current_process()->pid, pid);
 
-    return scheduler::get_scheduler()->yield_to_child(pid);
+    return scheduler::yield_to_child(pid);
 }
 
 int sys_exit(int status)
@@ -70,7 +70,7 @@ int sys_exit(int status)
 
     proc->exit_status = status;
 
-    scheduler::get_scheduler()->yield_zombie();
+    scheduler::yield_zombie();
 }
 
 }

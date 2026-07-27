@@ -139,7 +139,7 @@ static void keyboard_interrupt_handler(irq::InterruptFrame*)
 
     // Tell the scheduler there is keyboard input ready for any process
     // that is currently waiting for it
-    scheduler::get_scheduler()->wake_single(process::WaitReason::KEYBOARD);
+    scheduler::wake_single(process::WaitReason::KEYBOARD);
 
     apic::send_eoi();
 }

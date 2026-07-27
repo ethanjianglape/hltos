@@ -436,17 +436,13 @@ static void apic_timer_handler(irq::InterruptFrame* frame)
     // If a sleeping process needs to wake before the next periodic tick would
     // otherwise fire, arm the timer for that deadline instead, so sleepers are
     // woken precisely rather than waiting for the next 1ms tick to notice them
-    scheduler::Scheduler* sched = scheduler::get_scheduler();
+    process::Process* next_sleeper = scheduler::get_next_sleeper();
 
-    if (sched) {
-        process::Process* next_sleeper = sched->get_next_sleeper();
+    if (next_sleeper) {
+        const std::uint64_t sleeper_deadline = next_sleeper->wake_time_ticks;
 
-        if (next_sleeper) {
-            const std::uint64_t sleeper_deadline = next_sleeper->wake_time_ticks;
-
-            if (sleeper_deadline < interrupt_deadline) {
-                interrupt_deadline = sleeper_deadline;
-            }
+        if (sleeper_deadline < interrupt_deadline) {
+            interrupt_deadline = sleeper_deadline;
         }
     }
 

@@ -66,7 +66,7 @@ static void redraw_kthread()
         redraw();
 
         // arch::drivers::tsc::sleep_us(us_per_frame);
-        scheduler::get_scheduler()->yield_sleep_us(us_per_frame);
+        scheduler::yield_sleep_us(us_per_frame);
     }
 }
 
@@ -85,7 +85,7 @@ void init(const FrameBufferInfo& info)
     vram_buff = kalloc<std::uint8_t>(vram_size);
     vram_buff_end = vram_buff + vram_size;
 
-    scheduler::get_scheduler()->add_process(new process::KThread(redraw_kthread));
+    scheduler::add_process(new process::KThread(redraw_kthread));
 
     log::infof("Framebuffer: {}x{} @ {} bpp (pitch={})", fb_width, fb_height, fb_bpp, fb_pitch);
     log::infof("Framebuffer: {} total pixels", fb_num_pixels);
