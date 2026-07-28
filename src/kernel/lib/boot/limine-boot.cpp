@@ -12,7 +12,8 @@
 #include <kpanic/kpanic.hpp>
 #include <log/log.hpp>
 #include <memory/pmm.hpp>
-#include <scheduler/scheduler.hpp>
+#include <scheduler/mechanism/scheduler_mechanism.hpp>
+#include <scheduler/policy/scheduler_policy.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -146,7 +147,7 @@ static void init_memory()
     // Initialize VMM with the Higher Half Direct Map offset
     std::uint64_t hhdm_offset = hhdm_request.response->offset;
     arch::vmm::init(hhdm_offset);
-    scheduler::init();
+    scheduler::mechanism::init(new scheduler::policy::RoundRobinScheduler{});
 }
 
 static void init_acpi()

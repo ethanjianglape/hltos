@@ -19,7 +19,6 @@
 #include <fs/tmpfs/tmpfs.hpp>
 #include <gui/gui.hpp>
 #include <log/log.hpp>
-#include <scheduler/scheduler.hpp>
 #include <timer/timer.hpp>
 
 #ifdef KERNEL_TESTS

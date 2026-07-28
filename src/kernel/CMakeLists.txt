@@ -76,8 +76,8 @@ set(LIB_KERNEL_SOURCES
   ${LIB_DIR}/syscall/sys_mem.cpp
   ${LIB_DIR}/syscall/sys_prctl.cpp
   ${LIB_DIR}/syscall/sys_thread.cpp
-  ${LIB_DIR}/scheduler/scheduler.cpp
-  ${LIB_DIR}/scheduler/RoundRobinScheduler.cpp
+  ${LIB_DIR}/scheduler/mechanism/scheduler_mechanism.cpp
+  ${LIB_DIR}/scheduler/policy/round_robin.cpp
   ${LIB_DIR}/gui/gui.cpp
 )
 

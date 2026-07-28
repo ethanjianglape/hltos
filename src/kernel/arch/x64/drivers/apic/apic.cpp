@@ -99,7 +99,7 @@
 #include "kassert/kassert.hpp"
 #include "process/process.hpp"
 #include <acpi/madt.hpp>
-#include <scheduler/scheduler.hpp>
+#include <scheduler/mechanism/scheduler_mechanism.hpp>
 #include <timer/timer.hpp>
 
 #include <arch/x64/cpu/cpu.hpp>
@@ -436,7 +436,7 @@ static void apic_timer_handler(irq::InterruptFrame* frame)
     // If a sleeping process needs to wake before the next periodic tick would
     // otherwise fire, arm the timer for that deadline instead, so sleepers are
     // woken precisely rather than waiting for the next 1ms tick to notice them
-    process::Process* next_sleeper = scheduler::get_next_sleeper();
+    process::Process* next_sleeper = scheduler::mechanism::get_next_sleeper();
 
     if (next_sleeper) {
         const std::uint64_t sleeper_deadline = next_sleeper->wake_time_ticks;
@@ -452,7 +452,7 @@ static void apic_timer_handler(irq::InterruptFrame* frame)
     // must be done before calling the scheduler because the scheduler may or may not return
     send_eoi();
     timer::tick(frame);
-    scheduler::tick();
+    scheduler::mechanism::tick();
 }
 
 /// @brief Calibrates and initializes the LAPIC timer for periodic interrupts.

@@ -3,7 +3,7 @@
 #include <kassert/kassert.hpp>
 #include <log/log.hpp>
 #include <process/process.hpp>
-#include <scheduler/scheduler.hpp>
+#include <scheduler/mechanism/scheduler_mechanism.hpp>
 #include <syscall/sys_proc.hpp>
 
 #include <cstdint>
@@ -24,7 +24,7 @@ int sys_fork(arch::trap::SyscallFrame* syscall_frame)
 
     kassert_not_null(created);
 
-    scheduler::add_process(created);
+    scheduler::mechanism::add_process(created);
 
     return created->pid;
 }
@@ -48,7 +48,7 @@ int sys_execve(const char* path, char* argv[], char* envp[])
 
     current->exec_elf64(data, size, argv, envp);
 
-    scheduler::yield_new_process();
+    scheduler::mechanism::yield_new_process();
 }
 
 int sys_vfork()
@@ -61,7 +61,7 @@ int sys_wait4(int pid, int*, int, void*)
 {
     log::debugf("parent pid={} waiting on child pid={}", arch::percpu::current_process()->pid, pid);
 
-    return scheduler::yield_to_child(pid);
+    return scheduler::mechanism::yield_to_child(pid);
 }
 
 int sys_exit(int status)
@@ -70,7 +70,7 @@ int sys_exit(int status)
 
     proc->exit_status = status;
 
-    scheduler::yield_zombie();
+    scheduler::mechanism::yield_zombie();
 }
 
 }

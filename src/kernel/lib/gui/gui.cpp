@@ -6,7 +6,7 @@
 #include <gui/gui.hpp>
 
 #include <process/process.hpp>
-#include <scheduler/scheduler.hpp>
+#include <scheduler/mechanism/scheduler_mechanism.hpp>
 
 namespace gui {
 
@@ -129,7 +129,7 @@ gui_render_kthread()
 
         framebuffer::outline_rect(100, 100, 100, 100, 0x0000FFFF);
 
-        scheduler::yield_sleep_us(us_per_frame);
+        scheduler::mechanism::yield_sleep_us(us_per_frame);
     }
 }
 
@@ -145,7 +145,7 @@ static void gui_tick_kthread()
             square.move();
         }
 
-        scheduler::yield_sleep_ms(ms_per_frame);
+        scheduler::mechanism::yield_sleep_ms(ms_per_frame);
     }
 }
 
@@ -182,7 +182,7 @@ static void gui_input_kthread()
             }
         }
 
-        scheduler::yield_blocked(process::WaitReason::KEYBOARD);
+        scheduler::mechanism::yield_blocked(process::WaitReason::KEYBOARD);
     }
 }
 
@@ -196,9 +196,9 @@ void init()
 
     player = new Player{};
 
-    scheduler::add_process(new process::KThread{gui_render_kthread});
-    scheduler::add_process(new process::KThread{gui_tick_kthread});
-    scheduler::add_process(new process::KThread{gui_input_kthread});
+    scheduler::mechanism::add_process(new process::KThread{gui_render_kthread});
+    scheduler::mechanism::add_process(new process::KThread{gui_tick_kthread});
+    scheduler::mechanism::add_process(new process::KThread{gui_input_kthread});
 }
 
 }

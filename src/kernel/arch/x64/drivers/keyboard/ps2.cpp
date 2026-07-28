@@ -7,7 +7,7 @@
 #include <kpanic/kpanic.hpp>
 #include <log/log.hpp>
 #include <process/process.hpp>
-#include <scheduler/scheduler.hpp>
+#include <scheduler/mechanism/scheduler_mechanism.hpp>
 
 namespace x64::drivers::keyboard {
 
@@ -139,7 +139,7 @@ static void keyboard_interrupt_handler(irq::InterruptFrame*)
 
     // Tell the scheduler there is keyboard input ready for any process
     // that is currently waiting for it
-    scheduler::wake_single(process::WaitReason::KEYBOARD);
+    scheduler::mechanism::wake_single(process::WaitReason::KEYBOARD);
 
     apic::send_eoi();
 }

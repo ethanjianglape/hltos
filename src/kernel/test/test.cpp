@@ -62,6 +62,9 @@ void run();
 namespace test_algo {
 void run();
 }
+namespace test_round_robin {
+void run();
+}
 
 namespace test {
 
@@ -115,6 +118,7 @@ void run_all()
     test_fmt::run();
     test_algo::run();
     test_fs::run();
+    test_round_robin::run();
 
     auto frames_after_test = pmm::get_free_frames();
     auto slabs_after_test = slab::total_slabs();

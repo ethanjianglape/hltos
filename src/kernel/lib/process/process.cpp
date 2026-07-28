@@ -14,7 +14,7 @@
 #include <memory/slab.hpp>
 #include <process/elf.hpp>
 #include <process/process.hpp>
-#include <scheduler/scheduler.hpp>
+#include <scheduler/mechanism/scheduler_mechanism.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -51,7 +51,7 @@ static void kthread_entry_trampoline()
 
     entry_func();
 
-    scheduler::yield_dead();
+    scheduler::mechanism::yield_dead();
 }
 
 void Process::log() const

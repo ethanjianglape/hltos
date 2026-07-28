@@ -9,7 +9,7 @@
 #include <log/log.hpp>
 #include <memory/memory.hpp>
 #include <process/process.hpp>
-#include <scheduler/scheduler.hpp>
+#include <scheduler/mechanism/scheduler_mechanism.hpp>
 #include <timer/timer.hpp>
 
 #include <cstdint>
@@ -66,7 +66,7 @@ static void redraw_kthread()
         redraw();
 
         // arch::drivers::tsc::sleep_us(us_per_frame);
-        scheduler::yield_sleep_us(us_per_frame);
+        scheduler::mechanism::yield_sleep_us(us_per_frame);
     }
 }
 
@@ -85,7 +85,7 @@ void init(const FrameBufferInfo& info)
     vram_buff = kalloc<std::uint8_t>(vram_size);
     vram_buff_end = vram_buff + vram_size;
 
-    scheduler::add_process(new process::KThread(redraw_kthread));
+    scheduler::mechanism::add_process(new process::KThread(redraw_kthread));
 
     log::infof("Framebuffer: {}x{} @ {} bpp (pitch={})", fb_width, fb_height, fb_bpp, fb_pitch);
     log::infof("Framebuffer: {} total pixels", fb_num_pixels);

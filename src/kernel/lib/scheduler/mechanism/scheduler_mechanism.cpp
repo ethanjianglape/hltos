@@ -5,16 +5,15 @@
 #include <kpanic/kpanic.hpp>
 #include <log/log.hpp>
 #include <process/process.hpp>
-#include <scheduler/scheduler.hpp>
+#include <scheduler/mechanism/scheduler_mechanism.hpp>
+#include <scheduler/policy/scheduler_policy.hpp>
 
 #include <cerrno>
 #include <cstdint>
 
-namespace scheduler {
+namespace scheduler::mechanism {
 
-static constexpr std::uint64_t REAP_INTERVAL_MS = 100;
-
-static Scheduler* g_scheduler;
+static policy::SchedulerPolicy* g_scheduler;
 
 static kspinlock_irqsave g_processes_lock;
 static klist<process::Process*> g_processes;
@@ -37,6 +36,11 @@ void wake_single(process::WaitReason reason)
 {
     g_processes_lock.lock();
 
+    if (reason == process::WaitReason::SLEEP) {
+        log::warn("sleeping processes should not be explicitly woken");
+        goto cleanup;
+    }
+
     for (std::size_t i = 0; i < g_processes.size(); i++) {
         process::Process* p = g_processes[i];
 
@@ -51,6 +55,7 @@ void wake_single(process::WaitReason reason)
         }
 
         p->wake();
+        g_scheduler->enqueue(p);
 
         goto cleanup;
     }
@@ -67,6 +72,11 @@ void wake_all(process::WaitReason reason)
 {
     g_processes_lock.lock();
 
+    if (reason == process::WaitReason::SLEEP) {
+        log::warn("sleeping processes should not be explicitly woken");
+        goto cleanup;
+    }
+
     for (std::size_t i = 0; i < g_processes.size(); i++) {
         process::Process* p = g_processes[i];
 
@@ -81,8 +91,10 @@ void wake_all(process::WaitReason reason)
         }
 
         p->wake();
+        g_scheduler->enqueue(p);
     }
 
+cleanup:
     g_processes_lock.unlock();
 }
 
@@ -102,6 +114,7 @@ static void wake_parents(int pid)
         }
 
         p->wake();
+        g_scheduler->enqueue(p);
     }
 }
 
@@ -119,6 +132,7 @@ void wake_sleepers()
         }
 
         p->wake();
+        g_scheduler->enqueue(p);
         g_sleepers.pop();
     }
 }
@@ -185,12 +199,30 @@ static void activate_process(process::Process* p)
     arch::gdt::set_kernel_stack(p->kernel_rsp);
 }
 
-/// @brief Periodically terminate DEAD processes
+/// @brief re-enqueue a process that gave up the CPU but is still runnable
 ///
-/// @return this function should never return
+/// The idle process is never enqueued: it isn't a real schedulable process,
+/// just mechanism's fallback when the policy has nothing ready.
+///
+static void enqueue_if_runnable(process::Process* p)
+{
+    if (p == arch::percpu::idle_process()) {
+        return;
+    }
+
+    if (!p->is_ready()) {
+        return;
+    }
+
+    g_scheduler->enqueue(p);
+}
+
+/// @brief Periodically terminate DEAD processes
 ///
 static void reap()
 {
+    static constexpr std::uint64_t REAP_INTERVAL_MS = 100;
+
     g_processes_lock.lock();
 
     process::Process* self = arch::percpu::current_process();
@@ -220,6 +252,10 @@ static void reap()
     yield_sleep_ms(REAP_INTERVAL_MS);
 }
 
+/// @brief Periodically terminate DEAD processes
+///
+/// @return this function should never return
+///
 [[noreturn]]
 static void reaper_kthread()
 {
@@ -231,6 +267,21 @@ static void reaper_kthread()
     // processes, so if it stopped running, DEAD processes would continue to
     // accumulate, wasting resources
     kpanic("reaper_kthread terminated");
+}
+
+/// @brief wake any due sleepers, then ask the policy which process runs next
+///
+static process::Process* pick_next_process()
+{
+    wake_sleepers();
+
+    process::Process* next = g_scheduler->pick_next();
+
+    if (next == nullptr) {
+        return arch::percpu::idle_process();
+    }
+
+    return next;
 }
 
 /// @brief interrupt the current process to schedule a new one
@@ -259,7 +310,7 @@ static void preempt()
     g_processes_lock.lock();
 
     process::Process* current = arch::percpu::current_process();
-    process::Process* next = g_scheduler->next_ready_process(g_processes);
+    process::Process* next = pick_next_process();
 
     // We never want a process to context switch to itself, so we can
     // just leave early if a process wants to switch to itself, after
@@ -270,6 +321,7 @@ static void preempt()
     }
 
     current->pause();
+    enqueue_if_runnable(current);
     activate_process(next);
     g_processes_lock.unlock();
     context_switch(&current->kernel_rsp_saved, next->kernel_rsp_saved);
@@ -286,7 +338,7 @@ void yield_dead()
 
     process::Process* current = arch::percpu::current_process();
     current->kill();
-    process::Process* p = g_scheduler->next_ready_process(g_processes);
+    process::Process* p = pick_next_process();
 
     kassert(current != p);
     activate_process(p);
@@ -313,7 +365,7 @@ void yield_zombie()
     process::Process* current = arch::percpu::current_process();
     current->zombify();
     wake_parents(current->pid);
-    process::Process* p = g_scheduler->next_ready_process(g_processes);
+    process::Process* p = pick_next_process();
 
     kassert(current != p);
     activate_process(p);
@@ -361,13 +413,15 @@ int yield_to_child(int child_pid)
 
         parent->wait_for_child(child_pid);
 
-        process::Process* p = g_scheduler->next_ready_process(g_processes);
+        process::Process* p = pick_next_process();
 
         activate_process(p);
         g_processes_lock.unlock();
         context_switch(&parent->kernel_rsp_saved, p->kernel_rsp_saved);
     }
 }
+
+static void yield_sleep_ns(std::uint64_t sleep_time_ns);
 
 /// @brief put the current process to sleep
 ///
@@ -388,7 +442,7 @@ void yield_sleep_us(std::uint64_t sleep_time_us)
     yield_sleep_ns(sleep_time_ns);
 }
 
-void yield_sleep_ns(std::uint64_t sleep_time_ns)
+static void yield_sleep_ns(std::uint64_t sleep_time_ns)
 {
     process::Process* current = arch::percpu::current_process();
     current->sleep_until(arch::drivers::tsc::ticks_from_now(sleep_time_ns));
@@ -410,9 +464,9 @@ void yield_blocked(process::WaitReason reason)
         g_sleepers.insert(current->wake_time_ticks, current);
     }
 
-    process::Process* next = g_scheduler->next_ready_process(g_processes);
+    process::Process* next = pick_next_process();
 
-    // next_ready_process() wakes all sleeping processes that are past
+    // pick_next_process() wakes all sleeping processes that are past
     // their wake time, which could include this very process that is
     // trying to yield itself while sleeping. We do not want to context
     // switch a process to itself, so simply set its state back to RUNNING and carry on
@@ -432,11 +486,12 @@ void yield_new_process()
     g_processes_lock.lock();
 
     process::Process* current = arch::percpu::current_process();
-    process::Process* next = g_scheduler->next_ready_process(g_processes);
+    process::Process* next = pick_next_process();
 
     kassert(current != next);
 
     current->wake();
+    enqueue_if_runnable(current);
     activate_process(next);
     g_processes_lock.unlock();
 
@@ -457,6 +512,7 @@ void add_process(process::Process* p)
 
     g_processes_lock.lock();
     g_processes.push_back(p);
+    g_scheduler->enqueue(p);
     g_processes_lock.unlock();
 }
 
@@ -470,11 +526,13 @@ void tick()
     preempt();
 }
 
-void init()
+void init(policy::SchedulerPolicy* scheduler_policy)
 {
-    log::info("scheduler: Round Robin scheduler initialized");
+    kassert_not_null(scheduler_policy);
 
-    g_scheduler = new RoundRobinScheduler{};
+    g_scheduler = scheduler_policy;
+    g_scheduler->init();
+
     add_process(new process::KThread(reaper_kthread));
 }
 
