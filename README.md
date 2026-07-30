@@ -19,6 +19,7 @@ Use at your own risk. The author(s) are not responsible for any damage, data los
 
 **Target:** x86_64 (AMD64/Intel 64)
 - Requires APIC support (LAPIC + IOAPIC)
+- Requires invariant TSC (`CPUID.80000007H:EDX[8]`)
 - Uses Limine bootloader protocol
 - Tested on: QEMU
 
@@ -44,6 +45,8 @@ Use at your own risk. The author(s) are not responsible for any damage, data los
 - Ring 3 userspace execution
 - Kernel threads (`process::create_kthread`) for in-kernel background work (e.g. the framebuffer compositor), alongside full ELF user processes
 - Unified, spinlock-protected `context_switch()` used for all scheduling paths — both preemptive (APIC timer) and cooperative (`yield_blocked`/`yield_dead`/`yield_zombie`)
+- Scheduler split into mechanism and policy: `scheduler::mechanism` (free functions, shared run/sleep/wake state) drives context switching and wake-up, while a polymorphic `scheduler::policy::SchedulerPolicy` (currently `RoundRobinScheduler`) decides only what runs next
+- TSC-tick-based sleeping (`yield_sleep_ns`/`_us`/`_ms`/`_hz`): sleeping processes are tracked in a min-heap keyed by wake deadline, and the APIC arms its TSC-deadline timer for the *earliest* deadline — the next tick or the next sleeper's wake time, whichever comes first — rather than waking on a fixed period
 - Process states: NEW, RUNNING, READY, BLOCKED, SLEEPING, DEAD, ZOMBIE
 - Per-process page tables and file descriptor tables
 - `fork()` with true address-space cloning (PML4 + heap clone) — child resumes independently via a dedicated trampoline
@@ -84,19 +87,20 @@ os/
 │   │   │   ├── algo/               # Algorithm headers
 │   │   │   ├── boot/               # Boot info structures
 │   │   │   ├── console/            # Console/TTY interface
-│   │   │   ├── containers/         # kstring, kstring_view, kvector, klist
+│   │   │   ├── containers/         # kstring, kstring_view, kvector, klist, etc
 │   │   │   ├── crt/                # C runtime support
 │   │   │   ├── exclusive/          # kspinlock, kspinlock_irqsave, katomic
 │   │   │   ├── fmt/                # Kernel string formatting
 │   │   │   ├── framebuffer/        # Framebuffer compositor
 │   │   │   ├── fs/                 # VFS, initramfs, devfs, tmpfs
+│   │   │   ├── gfx/                # Graphics primitives (draw_line, rects) + fonts (Font, Font8x16)
 │   │   │   ├── kassert/            # Kernel assertions
 │   │   │   ├── kpanic/             # Kernel panic
 │   │   │   ├── kprint/             # Low-level kernel printing
 │   │   │   ├── log/                # Kernel logging
 │   │   │   ├── memory/             # PMM, VMM, slab, kmalloc
 │   │   │   ├── process/            # Process management
-│   │   │   ├── scheduler/          # Process scheduler
+│   │   │   ├── scheduler/          # mechanism/ (context switch, wake/sleep) + policy/ (RoundRobinScheduler)
 │   │   │   ├── syscall/            # Syscall declarations
 │   │   │   ├── timer/              # Timer interface
 │   │   │   └── linux/              # Linux uapi headers (ioctl, etc.)
@@ -108,10 +112,11 @@ os/
 │   │   │   ├── crt/                # C runtime support
 │   │   │   ├── framebuffer/        # Framebuffer compositor
 │   │   │   ├── fs/                 # VFS, initramfs, devfs, tmpfs
+│   │   │   ├── gfx/                # Graphics primitives + fonts implementation
 │   │   │   ├── kpanic/             # Panic handler
 │   │   │   ├── memory/             # PMM, VMM, slab, kmalloc
 │   │   │   ├── process/            # ELF loader, process creation
-│   │   │   ├── scheduler/          # Scheduler implementation
+│   │   │   ├── scheduler/          # mechanism/ (context switch, wake/sleep) + policy/ (RoundRobinScheduler)
 │   │   │   ├── syscall/            # Syscall implementations
 │   │   │   └── timer/              # Timer implementation
 │   │   ├── arch/x64/               # x86-64-specific code
@@ -132,7 +137,8 @@ os/
 │   │   │   ├── exclusive/          # kspinlock, kspinlock_irqsave, katomic
 │   │   │   ├── fmt/
 │   │   │   ├── fs/
-│   │   │   └── memory/             # PMM, VMM, slab, kmalloc
+│   │   │   ├── memory/             # PMM, VMM, slab, kmalloc
+│   │   │   └── scheduler/
 │   │   └── CONVENTIONS.md          # Code style guide
 │   └── user/                       # Userspace programs (ELF binaries)
 ├── firmware/                       # Bundled OVMF firmware for QEMU
