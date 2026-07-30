@@ -86,4 +86,20 @@ T min(T a, T b)
     return a < b ? a : b;
 }
 
+template <std::signed_integral T>
+T abs(T t)
+{
+    return t < 0 ? -t : t;
+}
+
+auto abs(std::integral auto t)
+{
+    return t;
+}
+
+auto sqr(std::integral auto t)
+{
+    return t * t;
+}
+
 }

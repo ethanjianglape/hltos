@@ -47,6 +47,12 @@ void run();
 namespace test_klist {
 void run();
 }
+namespace test_kmin_heap {
+void run();
+}
+namespace test_kmax_heap {
+void run();
+}
 namespace test_fmt {
 void run();
 }
@@ -56,8 +62,12 @@ void run();
 namespace test_algo {
 void run();
 }
+namespace test_round_robin {
+void run();
+}
 
 namespace test {
+
 static Results results = {0, 0};
 
 void pass([[maybe_unused]] const char* name)
@@ -82,7 +92,7 @@ Results get_results()
 void run_all()
 {
     log::info("======================================");
-    log::info("         Running kernel tests         ");
+    log::info("         Running Kernel Tests         ");
     log::info("======================================");
 
     results = {0, 0};
@@ -95,23 +105,26 @@ void run_all()
     test_slab::run();
     test_kmalloc::run();
     test_kvector::run();
+    test_klist::run();
+    test_kmin_heap::run();
+    test_kmax_heap::run();
+    test_kstring::run();
+    test_kstring_view::run();
     test_kunique_ptr::run();
     test_kshared_ptr::run();
     test_katomic::run();
     test_kspinlock::run();
     test_kspinlock_irqsave::run();
-    test_kstring::run();
-    test_kstring_view::run();
-    test_klist::run();
     test_fmt::run();
-    test_fs::run();
     test_algo::run();
+    test_fs::run();
+    test_round_robin::run();
 
     auto frames_after_test = pmm::get_free_frames();
     auto slabs_after_test = slab::total_slabs();
 
     log::info("======================================");
-    log::info("          Unit Test Results           ");
+    log::info("         Kernel Test Results          ");
     log::info("======================================");
     log::info("* PMM free frames before test: ", frames_before_test);
     log::info("* PMM free frames after test:  ", frames_after_test);
@@ -128,6 +141,7 @@ void run_all()
 
     log::info("======================================");
 }
+
 }
 
 #endif // KERNEL_TESTS

@@ -1,8 +1,8 @@
 #include <console/ansi.hpp>
 #include <console/console.hpp>
-#include <console/font8x16.hpp>
 #include <containers/kvector.hpp>
 #include <framebuffer/framebuffer.hpp>
+#include <gfx/fonts/font8x16.hpp>
 #include <log/log.hpp>
 #include <timer/timer.hpp>
 
@@ -10,6 +10,7 @@
 #include <cstdint>
 
 namespace console {
+
 namespace fb = framebuffer;
 
 static std::uint32_t cursor_col = 0;
@@ -30,14 +31,16 @@ static bool cursor_enabled = true;
 
 static kvector<kvector<ConsoleChar>> buffer;
 
+static gfx::fonts::Font8x16 font;
+
 std::uint32_t get_cursor_pixel_x(int offset = 0)
 {
-    return (cursor_col + offset) * fonts::FONT_WIDTH;
+    return (cursor_col + offset) * font.font_width();
 }
 
 std::uint32_t get_cursor_pixel_y(int offset = 0)
 {
-    return (cursor_row - viewport_offset + offset) * fonts::FONT_HEIGHT;
+    return (cursor_row - viewport_offset + offset) * font.font_height();
 }
 
 void ensure_valid_cursor_buffer_pos(std::size_t row, std::size_t col)
@@ -69,13 +72,13 @@ void init()
     cursor_row = 0;
     viewport_offset = 0;
 
-    screen_cols = fb::get_screen_width() / fonts::FONT_WIDTH;
-    screen_rows = fb::get_screen_height() / fonts::FONT_HEIGHT;
+    screen_cols = fb::get_screen_width() / font.font_width();
+    screen_rows = fb::get_screen_height() / font.font_height();
 
     cursor_enabled = true;
 
     log::infof("console: {}x{} characters", screen_cols, screen_rows);
-    log::infof("console: font {}x{} pixels", fonts::FONT_WIDTH, fonts::FONT_HEIGHT);
+    log::infof("console: font {}x{} pixels", font.font_width(), font.font_height());
     log::infof("console: cursor set to ({}, {})", cursor_col, cursor_row);
 }
 
@@ -98,7 +101,7 @@ void draw_cursor()
     const std::uint32_t px = get_cursor_pixel_x();
     const std::uint32_t py = get_cursor_pixel_y();
 
-    fb::invert_rec(px, py, fonts::FONT_WIDTH, fonts::FONT_HEIGHT);
+    fb::invert_rec(px, py, font.font_width(), font.font_height());
 }
 
 void clear_to_eol()
@@ -211,17 +214,15 @@ void backspace()
 
 void draw_character_at(char c, std::size_t row, std::size_t col, std::uint32_t fg, std::uint32_t bg)
 {
-    const std::uint32_t pixel_x = col * fonts::FONT_WIDTH;
-    const std::uint32_t pixel_y = row * fonts::FONT_HEIGHT;
+    const std::uint32_t pixel_x = col * font.font_width();
+    const std::uint32_t pixel_y = row * font.font_height();
 
     if (c == ' ') {
-        fb::draw_rec(pixel_x, pixel_y, fonts::FONT_WIDTH, fonts::FONT_HEIGHT, bg);
+        fb::fill_rect(pixel_x, pixel_y, font.font_width(), font.font_height(), bg);
         return;
     }
 
-    const std::uint8_t* glyph = fonts::get_glyph(c);
-
-    fb::draw_glyph(pixel_x, pixel_y, fonts::FONT_WIDTH, fonts::FONT_HEIGHT, glyph, fg, bg);
+    fb::draw_char(pixel_x, pixel_y, &font, c, fg, bg);
 }
 
 int put(char c)

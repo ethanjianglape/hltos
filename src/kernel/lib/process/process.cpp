@@ -14,7 +14,7 @@
 #include <memory/slab.hpp>
 #include <process/elf.hpp>
 #include <process/process.hpp>
-#include <scheduler/scheduler.hpp>
+#include <scheduler/mechanism/scheduler_mechanism.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -51,7 +51,7 @@ static void kthread_entry_trampoline()
 
     entry_func();
 
-    scheduler::get_scheduler()->yield_dead();
+    scheduler::mechanism::yield_dead();
 }
 
 void Process::log() const
@@ -77,7 +77,7 @@ KThread::KThread(void (*func)())
     fd_table = {};
     kernel_stack = new std::uint8_t[KERNEL_STACK_SIZE];
     kernel_rsp = reinterpret_cast<std::uintptr_t>(kernel_stack + KERNEL_STACK_SIZE);
-    wake_time_ms = 0;
+    wake_time_ticks = 0;
     mmap_min_addr = DEFAULT_MMAP_MIN_ADDR;
     fs_base = 0;
     tidptr = 0;
@@ -137,7 +137,7 @@ void Process::exec_elf64(std::uint8_t* buffer, std::size_t size, char* const arg
     exit_status = 0;
     heap_break = 0;
     kernel_rsp = reinterpret_cast<std::uintptr_t>(kernel_stack + KERNEL_STACK_SIZE);
-    wake_time_ms = 0;
+    wake_time_ticks = 0;
     mmap_min_addr = DEFAULT_MMAP_MIN_ADDR;
     fs_base = 0;
     tidptr = 0;
@@ -220,7 +220,7 @@ ELF64Process::ELF64Process(std::uint8_t* buffer, std::size_t size)
     fd_table = {};
     kernel_stack = new std::uint8_t[KERNEL_STACK_SIZE];
     kernel_rsp = reinterpret_cast<std::uintptr_t>(kernel_stack + KERNEL_STACK_SIZE);
-    wake_time_ms = 0;
+    wake_time_ticks = 0;
     mmap_min_addr = DEFAULT_MMAP_MIN_ADDR;
     fs_base = 0;
     tidptr = 0;
@@ -329,7 +329,7 @@ Process* Process::fork(arch::trap::SyscallFrame* parent_frame)
     forked->pml4 = cloned_pml4;
     forked->kernel_stack = new std::uint8_t[KERNEL_STACK_SIZE];
     forked->kernel_rsp = reinterpret_cast<std::uintptr_t>(forked->kernel_stack + KERNEL_STACK_SIZE);
-    forked->wake_time_ms = wake_time_ms;
+    forked->wake_time_ticks = wake_time_ticks;
     forked->mmap_min_addr = DEFAULT_MMAP_MIN_ADDR;
     forked->fs_base = fs_base;
     forked->tidptr = tidptr;
@@ -467,7 +467,7 @@ void Process::wake()
     state = ProcessState::READY;
     wait_reason = WaitReason::NONE;
     wait_pid = -1;
-    wake_time_ms = 0;
+    wake_time_ticks = 0;
 }
 
 /// pauses the process if it is currently running
@@ -483,7 +483,7 @@ void Process::resume()
     state = ProcessState::RUNNING;
     wait_reason = WaitReason::NONE;
     wait_pid = -1;
-    wake_time_ms = 0;
+    wake_time_ticks = 0;
 }
 
 void Process::kill()
@@ -508,10 +508,10 @@ void Process::wait_for_child(int child_pid)
     wait_pid = child_pid;
 }
 
-void Process::sleep_until(std::uint64_t wake_time_ms)
+void Process::sleep_until(std::uint64_t wake_time_ticks)
 {
     wait_for(WaitReason::SLEEP);
-    this->wake_time_ms = wake_time_ms;
+    this->wake_time_ticks = wake_time_ticks;
 }
 
 void Process::terminate()

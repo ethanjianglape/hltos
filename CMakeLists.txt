@@ -1,9 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
 
-# Skip ABI detection tests to avoid log clutter
-set(CMAKE_C_ABI_COMPILED 1)
-set(CMAKE_CXX_ABI_COMPILED 1)
-
 # Project definition
 project(hltos ASM C CXX)
 
@@ -29,6 +25,7 @@ add_compile_options(
   $<$<COMPILE_LANGUAGE:C,CXX>:-mabi=sysv>
   $<$<COMPILE_LANGUAGE:C,CXX>:-mno-red-zone>
   $<$<COMPILE_LANGUAGE:C,CXX>:-mgeneral-regs-only>
+  $<$<COMPILE_LANGUAGE:C,CXX>:-mno-sse>
   $<$<COMPILE_LANGUAGE:C,CXX>:-ffreestanding>
   $<$<COMPILE_LANGUAGE:C,CXX>:-ffunction-sections>
   $<$<COMPILE_LANGUAGE:C,CXX>:-fno-stack-protector>
@@ -37,8 +34,7 @@ add_compile_options(
   $<$<COMPILE_LANGUAGE:C,CXX>:-Wall>
   $<$<COMPILE_LANGUAGE:C,CXX>:-Wextra>
   $<$<COMPILE_LANGUAGE:C,CXX>:-g>
-  $<$<COMPILE_LANGUAGE:C,CXX>:-O0>
-  $<$<COMPILE_LANGUAGE:ASM>:--64>
+  $<$<COMPILE_LANGUAGE:C,CXX>:-O1>
 )
 
 # C++ specific flags
@@ -48,11 +44,15 @@ add_compile_options(
   $<$<COMPILE_LANGUAGE:CXX>:-fno-use-cxa-atexit>
 )
 
+# Assembly specific flags
+add_compile_options(
+  $<$<COMPILE_LANGUAGE:ASM>:--64>  
+)
+
 # Sysroot configuration
 set(SYSROOT "${CMAKE_SOURCE_DIR}/sysroot" CACHE PATH "Sysroot directory")
 
 # Include directories (before add_subdirectory so subdirs inherit them)
-include_directories(${SYSROOT}/usr/include)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # Add kernel subdirectory — also sets LINKER_SCRIPT in this scope via PARENT_SCOPE
@@ -66,7 +66,8 @@ add_subdirectory(src/user)
 file(MAKE_DIRECTORY ${SYSROOT}/boot)
 
 add_custom_command(
-  OUTPUT ${CMAKE_BINARY_DIR}/kernel.elf ${CMAKE_BINARY_DIR}/kernel.map ${CMAKE_BINARY_DIR}/.kernel_stamp
+  OUTPUT ${CMAKE_BINARY_DIR}/kernel.elf
+  BYPRODUCTS ${CMAKE_BINARY_DIR}/kernel.map
   COMMAND ${CMAKE_COMMAND} -E rm -f kernel.elf
   COMMAND ${CMAKE_CXX_COMPILER}
   -m64
@@ -85,7 +86,6 @@ add_custom_command(
   -lgcc
   COMMAND ${CMAKE_COMMAND} -E remove -f ${SYSROOT}/boot/kernel.elf
   COMMAND ${CMAKE_COMMAND} -E copy kernel.elf ${SYSROOT}/boot/kernel.elf
-  COMMAND ${CMAKE_COMMAND} -E touch .kernel_stamp
   DEPENDS
   boot_objs kernel_objs crti_obj crtn_obj
   "$<TARGET_OBJECTS:boot_objs>"
@@ -145,7 +145,7 @@ add_custom_command(
   -o ${CMAKE_SOURCE_DIR}/hltos.iso ${SYSROOT}/
   COMMAND ${LIMINE_CMD} bios-install ${CMAKE_SOURCE_DIR}/hltos.iso
   DEPENDS
-  ${CMAKE_BINARY_DIR}/.kernel_stamp
+  ${CMAKE_BINARY_DIR}/kernel.elf
   ${LIMINE_CONF}
   ${INITRAMFS_STATIC_FILES}
   ${CMAKE_SOURCE_DIR}/initramfs/bin/shell
@@ -156,4 +156,5 @@ add_custom_command(
   VERBATIM
 )
 add_custom_target(iso ALL DEPENDS ${CMAKE_SOURCE_DIR}/hltos.iso)
+add_dependencies(iso kernel)
 

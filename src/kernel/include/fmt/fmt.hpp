@@ -132,6 +132,7 @@ inline const char* to_string(std::uintmax_t unum, char (&buffer)[128], NumberFor
         buffer[index++] = 'b';
     } else if (format == NumberFormat::OCT) {
         buffer[index++] = '0';
+        buffer[index++] = 'o';
     }
 
     if (unum == 0) {
@@ -155,7 +156,7 @@ inline const char* to_string(std::uintmax_t unum, char (&buffer)[128], NumberFor
     }
 
     // Pad hex and bin formats with 0 so they fit within 4/8/16/32/64 bits
-    if (format == NumberFormat::HEX || format == NumberFormat::BIN) {
+    if (format != NumberFormat::DEC) {
         index += pad_zero(buffer, index);
     }
 
@@ -184,6 +185,7 @@ inline const char* to_string(std::intmax_t num, char (&buffer)[128], NumberForma
         buffer[index++] = 'b';
     } else if (format == NumberFormat::OCT) {
         buffer[index++] = '0';
+        buffer[index++] = 'o';
     }
 
     if (unum == 0) {
@@ -207,7 +209,7 @@ inline const char* to_string(std::intmax_t num, char (&buffer)[128], NumberForma
     }
 
     // Pad hex and bin formats with 0 so they fit within 4/8/16/32/64 bits
-    if (format == NumberFormat::HEX || format == NumberFormat::BIN) {
+    if (format != NumberFormat::DEC) {
         index += pad_zero(buffer, index);
     }
 
