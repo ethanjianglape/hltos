@@ -13,7 +13,7 @@
 
 namespace scheduler::mechanism {
 
-static policy::SchedulerPolicy* g_scheduler;
+static policy::SchedulerPolicy* g_scheduler_policy;
 
 static kspinlock_irqsave g_processes_lock;
 static klist<process::Process*> g_processes;
@@ -27,6 +27,17 @@ static kmin_heap<std::uint64_t, process::Process*> g_sleepers;
 /// @note this function is defined in context_switch.s
 ///
 extern "C" void context_switch(std::uint64_t* old_rsp_ptr, std::uint64_t new_rsp);
+
+/// @brief permanently switch execution from on process to another
+///
+/// @param new_rsp the rsp of the new process
+///
+/// @note unlike context_switch, from the callers perspective, this function
+/// will never return, because we will never context switch back to
+/// a process that called permanent_context_switch
+///
+extern "C" [[noreturn]]
+void permanent_context_switch(std::uintptr_t new_rsp);
 
 /// @brief wakes the first processes that is blocked for wait_reason
 ///
@@ -55,7 +66,7 @@ void wake_single(process::WaitReason reason)
         }
 
         p->wake();
-        g_scheduler->enqueue(p);
+        g_scheduler_policy->enqueue(p);
 
         goto cleanup;
     }
@@ -91,7 +102,7 @@ void wake_all(process::WaitReason reason)
         }
 
         p->wake();
-        g_scheduler->enqueue(p);
+        g_scheduler_policy->enqueue(p);
     }
 
 cleanup:
@@ -114,7 +125,7 @@ static void wake_parents(int pid)
         }
 
         p->wake();
-        g_scheduler->enqueue(p);
+        g_scheduler_policy->enqueue(p);
     }
 }
 
@@ -132,14 +143,14 @@ void wake_sleepers()
         }
 
         p->wake();
-        g_scheduler->enqueue(p);
+        g_scheduler_policy->enqueue(p);
         g_sleepers.pop();
     }
 }
 
 process::Process* get_next_sleeper()
 {
-    if (g_scheduler == nullptr) {
+    if (g_scheduler_policy == nullptr) {
         return nullptr;
     }
 
@@ -214,14 +225,13 @@ static void enqueue_if_runnable(process::Process* p)
         return;
     }
 
-    g_scheduler->enqueue(p);
+    g_scheduler_policy->enqueue(p);
 }
 
-/// @brief Periodically terminate DEAD processes
+/// @brief Terminates DEAD processes
 ///
 static void reap()
 {
-    static constexpr std::uint64_t REAP_INTERVAL_MS = 100;
 
     g_processes_lock.lock();
 
@@ -238,9 +248,7 @@ static void reap()
 
         // the reaper_kthread should never attempt to terminate itself,
         // even if it gets marked DEAD for some reason
-        if (p == self) {
-            kpanic("reaper_kthread wants to kill itself");
-        }
+        kassert(p != self, "reaper_kthread tried to kill itself");
 
         delete p;
 
@@ -248,8 +256,6 @@ static void reap()
     }
 
     g_processes_lock.unlock();
-
-    yield_sleep_ms(REAP_INTERVAL_MS);
 }
 
 /// @brief Periodically terminate DEAD processes
@@ -259,8 +265,12 @@ static void reap()
 [[noreturn]]
 static void reaper_kthread()
 {
+    static constexpr std::uint64_t REAP_INTERVAL_MS = 100;
+
     while (true) {
         reap();
+
+        yield_sleep_ms(REAP_INTERVAL_MS);
     }
 
     // The reaper kthread should never finish, its responsible for terminating DEAD
@@ -275,7 +285,7 @@ static process::Process* pick_next_process()
 {
     wake_sleepers();
 
-    process::Process* next = g_scheduler->pick_next();
+    process::Process* next = g_scheduler_policy->pick_next();
 
     if (next == nullptr) {
         return arch::percpu::idle_process();
@@ -343,13 +353,14 @@ void yield_dead()
     kassert(current != p);
     activate_process(p);
     g_processes_lock.unlock();
-    context_switch(&current->kernel_rsp_saved, p->kernel_rsp_saved);
+
+    permanent_context_switch(p->kernel_rsp_saved);
 
     // A DEAD process should never be the target of a context_switch from another
     // process, because now that this process is marked as DEAD, the reaper_kthread
     // will pick it and terminate it completely, freeing all of the memory it used,
     // so there would be nothing to context_switch back to anyway
-    kpanic("Context switch back to dead process");
+    kpanic("context switch back to dead process");
 }
 
 /// mark the current process as ZOMBIE, wake all parents that are
@@ -370,10 +381,11 @@ void yield_zombie()
     kassert(current != p);
     activate_process(p);
     g_processes_lock.unlock();
-    context_switch(&current->kernel_rsp_saved, p->kernel_rsp_saved);
+
+    permanent_context_switch(p->kernel_rsp_saved);
 
     // A ZOMBIE process should never be the target of context_switch
-    kpanic("Context switch back to zombie process");
+    kpanic("context switch back to zombie process");
 }
 
 /// blocks the current process until child_pid exits
@@ -421,7 +433,16 @@ int yield_to_child(int child_pid)
     }
 }
 
-static void yield_sleep_ns(std::uint64_t sleep_time_ns);
+/// @brief put the current process to sleep based on a desired frequency
+///
+void yield_sleep_hz(std::uint64_t sleep_hz)
+{
+    kassert(sleep_hz > 0);
+
+    const std::uint64_t sleep_time_ms = 1000 / sleep_hz;
+
+    yield_sleep_ms(sleep_time_ms);
+}
 
 /// @brief put the current process to sleep
 ///
@@ -442,7 +463,7 @@ void yield_sleep_us(std::uint64_t sleep_time_us)
     yield_sleep_ns(sleep_time_ns);
 }
 
-static void yield_sleep_ns(std::uint64_t sleep_time_ns)
+void yield_sleep_ns(std::uint64_t sleep_time_ns)
 {
     process::Process* current = arch::percpu::current_process();
     current->sleep_until(arch::drivers::tsc::ticks_from_now(sleep_time_ns));
@@ -481,6 +502,16 @@ void yield_blocked(process::WaitReason reason)
     context_switch(&current->kernel_rsp_saved, next->kernel_rsp_saved);
 }
 
+/// @brief yields the current process that was just created
+///
+/// when a new process is created (for example after userspace calls exec())
+/// the process that created the new process gets replaced and no longer
+/// exists, so there is no longer anything to return back to
+///
+/// instead, the current process needs to be scheduled like any other
+/// process so that we can context_switch() to it for the first time
+///
+/// @note this function must never return
 void yield_new_process()
 {
     g_processes_lock.lock();
@@ -495,9 +526,7 @@ void yield_new_process()
     activate_process(next);
     g_processes_lock.unlock();
 
-    std::uintptr_t throwaway;
-
-    context_switch(&throwaway, next->kernel_rsp_saved);
+    permanent_context_switch(next->kernel_rsp_saved);
 
     kpanic("yield_new_process should not return");
 }
@@ -512,13 +541,13 @@ void add_process(process::Process* p)
 
     g_processes_lock.lock();
     g_processes.push_back(p);
-    g_scheduler->enqueue(p);
+    g_scheduler_policy->enqueue(p);
     g_processes_lock.unlock();
 }
 
 void tick()
 {
-    if (g_scheduler == nullptr) {
+    if (g_scheduler_policy == nullptr) {
         return;
     }
 
@@ -530,8 +559,8 @@ void init(policy::SchedulerPolicy* scheduler_policy)
 {
     kassert_not_null(scheduler_policy);
 
-    g_scheduler = scheduler_policy;
-    g_scheduler->init();
+    g_scheduler_policy = scheduler_policy;
+    g_scheduler_policy->init();
 
     add_process(new process::KThread(reaper_kthread));
 }

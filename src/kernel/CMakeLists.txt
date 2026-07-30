@@ -78,7 +78,7 @@ set(LIB_KERNEL_SOURCES
   ${LIB_DIR}/syscall/sys_thread.cpp
   ${LIB_DIR}/scheduler/mechanism/scheduler_mechanism.cpp
   ${LIB_DIR}/scheduler/policy/round_robin.cpp
-  ${LIB_DIR}/gui/gui.cpp
+  ${LIB_DIR}/gfx/gfx.cpp
 )
 
 # Test sources (only compiled when KERNEL_TESTS is ON)

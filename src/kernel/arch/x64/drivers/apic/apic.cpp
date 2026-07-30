@@ -438,7 +438,7 @@ static void apic_timer_handler(irq::InterruptFrame* frame)
     // woken precisely rather than waiting for the next 1ms tick to notice them
     process::Process* next_sleeper = scheduler::mechanism::get_next_sleeper();
 
-    if (next_sleeper) {
+    if (next_sleeper != nullptr) {
         const std::uint64_t sleeper_deadline = next_sleeper->wake_time_ticks;
 
         if (sleeper_deadline < interrupt_deadline) {

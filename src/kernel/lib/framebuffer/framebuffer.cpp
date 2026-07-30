@@ -1,11 +1,12 @@
-#include "algo/algo.hpp"
-#include "arch/x64/drivers/tsc/tsc.hpp"
+#include <algo/algo.hpp>
 #include <arch.hpp>
 #include <console/console.hpp>
 #include <crt/crt.h>
 #include <exclusive/kspinlock.hpp>
 #include <fmt/fmt.hpp>
 #include <framebuffer/framebuffer.hpp>
+#include <gfx/fonts/font8x16.hpp>
+#include <kassert/kassert.hpp>
 #include <log/log.hpp>
 #include <memory/memory.hpp>
 #include <process/process.hpp>
@@ -51,22 +52,21 @@ inline constexpr std::size_t get_pixel_offset(std::uint32_t x, std::uint32_t y)
 static void redraw()
 {
     g_fb_spinlock.lock();
-    memcpy(vram, static_cast<const std::uint8_t*>(vram_buff), vram_size);
-    needs_redraw = false;
+    if (needs_redraw) {
+        memcpy(vram, static_cast<const std::uint8_t*>(vram_buff), vram_size);
+        needs_redraw = false;
+    }
     g_fb_spinlock.unlock();
 }
 
 static void redraw_kthread()
 {
-    constexpr int target_fps = 60;
-    constexpr int ms_per_frame = 1000 / target_fps;
-    constexpr int us_per_frame = ms_per_frame * 1000;
+    constexpr std::uint64_t target_fps = 120;
 
     while (true) {
         redraw();
 
-        // arch::drivers::tsc::sleep_us(us_per_frame);
-        scheduler::mechanism::yield_sleep_us(us_per_frame);
+        scheduler::mechanism::yield_sleep_hz(target_fps);
     }
 }
 
@@ -82,15 +82,15 @@ void init(const FrameBufferInfo& info)
     vram = info.vram;
     vram_end = vram + vram_size;
 
-    vram_buff = kalloc<std::uint8_t>(vram_size);
+    vram_buff = new std::uint8_t[vram_size]; // kalloc<std::uint8_t>(vram_size);
     vram_buff_end = vram_buff + vram_size;
 
     scheduler::mechanism::add_process(new process::KThread(redraw_kthread));
 
-    log::infof("Framebuffer: {}x{} @ {} bpp (pitch={})", fb_width, fb_height, fb_bpp, fb_pitch);
-    log::infof("Framebuffer: {} total pixels", fb_num_pixels);
-    log::infof("Framebuffer: VRAM @ [{} - {}] ({} bytes)", fmt::hex{vram}, fmt::hex{vram_end}, vram_size);
-    log::infof("Framebuffer: VRAM double buffer @ [{}-{}]", fmt::hex{vram_buff}, fmt::hex{vram_buff_end});
+    log::infof("framebuffer: {}x{} @ {} bpp (pitch={})", fb_width, fb_height, fb_bpp, fb_pitch);
+    log::infof("framebuffer: {} total pixels", fb_num_pixels);
+    log::infof("framebuffer: VRAM @ [{} - {}] ({} bytes)", fmt::hex{vram}, fmt::hex{vram_end}, vram_size);
+    log::infof("framebuffer: VRAM double buffer @ [{} - {}]", fmt::hex{vram_buff}, fmt::hex{vram_buff_end});
 }
 
 static std::uint32_t get_pixel(std::uint32_t x, std::uint32_t y)
@@ -143,8 +143,98 @@ void invert_rec(std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t
     g_fb_spinlock.unlock();
 }
 
-void draw_line(std::uint32_t x0, std::uint32_t y0, std::uint32_t x1, std::uint32_t y1, std::uint32_t color)
+static inline void draw_x_dominant_line(
+    int x0,
+    int y0,
+    int x1,
+    int y1,
+    int dx,
+    int dy,
+    int color)
 {
+    g_fb_spinlock.lock();
+
+    const std::uint8_t blue = color & 0xFF;
+    const std::uint8_t green = (color >> 8) & 0xFF;
+    const std::uint8_t red = (color >> 16) & 0xFF;
+
+    const int sx = x1 >= x0 ? 1 : -1;
+    const int sy = y1 >= y0 ? 1 : -1;
+
+    int d = 2 * dy - dx;
+    int x = x0;
+    int y = y0;
+
+    while (x != x1) {
+        draw_pixel(x, y, red, green, blue);
+
+        if (d > 0) {
+            y += sy;
+            d = d + (2 * (dy - dx));
+        } else {
+            d = d + 2 * dy;
+        }
+
+        x += sx;
+    }
+
+    g_fb_spinlock.unlock();
+}
+
+static inline void draw_y_dominant_line(
+    int x0,
+    int y0,
+    int x1,
+    int y1,
+    int dx,
+    int dy,
+    int color)
+{
+    g_fb_spinlock.lock();
+
+    const std::uint8_t blue = color & 0xFF;
+    const std::uint8_t green = (color >> 8) & 0xFF;
+    const std::uint8_t red = (color >> 16) & 0xFF;
+
+    const int sx = x1 >= x0 ? 1 : -1;
+    const int sy = y1 >= y0 ? 1 : -1;
+
+    int d = 2 * dx - dy;
+    int x = x0;
+    int y = y0;
+
+    while (y != y1) {
+        draw_pixel(x, y, red, green, blue);
+
+        if (d > 0) {
+            x += sx;
+            d = d + (2 * (dx - dy));
+
+        } else {
+            d = d + 2 * dx;
+        }
+
+        y += sy;
+    }
+
+    g_fb_spinlock.unlock();
+}
+
+void draw_line(int x0, int y0, int x1, int y1, int color)
+{
+    kassert(x0 >= 0 && x0 < static_cast<int>(fb_width), "x0 out of bounds");
+    kassert(x1 >= 0 && x1 < static_cast<int>(fb_width), "x1 out of bounds");
+    kassert(y0 >= 0 && y0 < static_cast<int>(fb_height), "y0 out of bounds");
+    kassert(y1 >= 0 && y1 < static_cast<int>(fb_height), "y1 out of bounds");
+
+    const int dx = algo::abs(x1 - x0);
+    const int dy = algo::abs(y1 - y0);
+
+    if (dx >= dy) {
+        return draw_x_dominant_line(x0, y0, x1, y1, dx, dy, color);
+    }
+
+    return draw_y_dominant_line(x0, y0, x1, y1, dx, dy, color);
 }
 
 void outline_rect(std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t h, std::uint32_t color)
@@ -195,19 +285,32 @@ void fill_rect(std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t 
     g_fb_spinlock.unlock();
 }
 
-void draw_glyph(const std::uint32_t x, const std::uint32_t y, std::uint32_t w, std::uint32_t h, const std::uint8_t* glyph, std::uint32_t fg, std::uint32_t bg)
+void draw_str(int x, int y, gfx::fonts::Font* font, kstring_view str, int fg, int bg)
 {
+    for (std::size_t i = 0; i < str.size(); i++) {
+        draw_char(x + (i * font->font_width()), y, font, str[i], fg, bg);
+    }
+}
+
+void draw_char(int x, int y, gfx::fonts::Font* font, char c, int fg, int bg)
+{
+    kassert_not_null(font);
+    kassert(x >= 0 && x + font->font_width() < static_cast<int>(fb_width), "x out of bounds");
+    kassert(y >= 0 && y + font->font_height() < static_cast<int>(fb_height), "y out of bounds");
+
     g_fb_spinlock.lock();
 
-    for (std::uint8_t gy = 0; gy < h; gy++) {
+    const std::uint8_t* glyph = font->get_glyph(c);
+
+    for (std::uint8_t gy = 0; gy < font->font_height(); gy++) {
         const std::uint8_t byte = glyph[gy];
 
-        for (std::uint8_t gx = 0; gx < w; gx++) {
-            const std::uint8_t pixel = (byte >> (w - gx - 1)) & 1;
+        for (std::uint8_t gx = 0; gx < font->font_width(); gx++) {
+            const std::uint8_t pixel = (byte >> (font->font_width() - gx - 1)) & 1;
 
             if (pixel == 1) {
                 draw_pixel(x + gx, y + gy, fg);
-            } else {
+            } else if (bg >= 0) {
                 draw_pixel(x + gx, y + gy, bg);
             }
         }

@@ -110,8 +110,35 @@ context_switch:
     pop %rbp
 
     # Return to wherever the new process left off
-    # For existing processes: back into yield_blocked()
-    # For new processes: into userspace_entry_trampoline (we set rip to this)
+    ret
+
+# ============================================================================
+# permanent_context_switch(new_rsp)
+# ============================================================================
+#
+# Loads context from new_rsp.
+#
+# Arguments (System V ABI):
+#   rdi = the new RSP to switch to (e.g., next_process->kernel_rsp)
+#
+# After this returns, we're running on a completely different stack with
+# different saved registers. From the new process's perspective, it just
+# "returned" from its own earlier call to context_switch().
+
+.global permanent_context_switch
+.type permanent_context_switch, @function
+permanent_context_switch:
+    mov %rdi, %rsp
+
+    # Restore callee-saved registers from the new stack
+    pop %r15
+    pop %r14
+    pop %r13
+    pop %r12
+    pop %rbx
+    pop %rbp
+
+    # Return to wherever the new process left off
     ret
 
 # ============================================================================

@@ -62,14 +62,14 @@
  */
 
 #include "percpu.hpp"
-#include "kassert/kassert.hpp"
-#include "kpanic/kpanic.hpp"
-
 #include <arch/x64/cpu/cpu.hpp>
-#include <cstdint>
 #include <fmt/fmt.hpp>
+#include <kassert/kassert.hpp>
+#include <kpanic/kpanic.hpp>
 #include <log/log.hpp>
 #include <process/process.hpp>
+
+#include <cstdint>
 
 namespace x64::percpu {
 
@@ -170,8 +170,8 @@ void enable_preemption()
 
 process::Process* idle_process()
 {
-    auto* cpu = get();
-    auto* p = cpu->idle_process;
+    PerCPU* cpu = get();
+    process::Process* p = cpu->idle_process;
 
     kassert_not_null(p);
 

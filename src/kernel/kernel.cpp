@@ -17,7 +17,7 @@
 #include <fs/devfs/devfs.hpp>
 #include <fs/procfs/procfs.hpp>
 #include <fs/tmpfs/tmpfs.hpp>
-#include <gui/gui.hpp>
+#include <gfx/gfx.hpp>
 #include <log/log.hpp>
 #include <timer/timer.hpp>
 
@@ -46,7 +46,7 @@ void kernel_main()
 
     console::init();
     fs::init();
-    gui::init();
+    gfx::init();
 
 #ifdef KERNEL_TESTS
     test::run_all();

@@ -1,14 +1,13 @@
-#include "console/console.hpp"
-#include "containers/kvector.hpp"
-#include "framebuffer/framebuffer.hpp"
-#include "log/log.hpp"
+#include "fmt/fmt.hpp"
+#include <containers/kvector.hpp>
 #include <cstdint>
-#include <gui/gui.hpp>
-
+#include <framebuffer/framebuffer.hpp>
+#include <gfx/fonts/font8x16.hpp>
+#include <gfx/gfx.hpp>
 #include <process/process.hpp>
 #include <scheduler/mechanism/scheduler_mechanism.hpp>
 
-namespace gui {
+namespace gfx {
 
 class Square {
 public:
@@ -19,8 +18,9 @@ public:
     int dx;
     int dy;
     std::uint32_t color;
+    bool solid;
 
-    Square(int x, int y, int w, int h, int dx, int dy, std::uint32_t color)
+    Square(int x, int y, int w, int h, int dx, int dy, std::uint32_t color, bool solid = true)
         : x{x}
         , y{y}
         , w{w}
@@ -28,12 +28,17 @@ public:
         , dx{dx}
         , dy{dy}
         , color{color}
+        , solid{solid}
     {
     }
 
     void draw()
     {
-        framebuffer::fill_rect(x, y, w, h, color);
+        if (solid) {
+            framebuffer::fill_rect(x, y, w, h, color);
+        } else {
+            framebuffer::outline_rect(x, y, w, h, color);
+        }
     }
 
     void move()
@@ -59,6 +64,63 @@ public:
         if (y + h >= (int)framebuffer::get_screen_height()) {
             y = framebuffer::get_screen_height() - h;
             dy = -dy;
+        }
+    }
+};
+
+class Line {
+public:
+    int x0, x0_start;
+    int y0, y0_start;
+    int x1, x1_start;
+    int y1, y1_start;
+
+    int dx;
+    int dy;
+
+    Line(int a, int b, int c, int d)
+        : x0{a}
+        , x0_start{a}
+        , y0{b}
+        , y0_start{b}
+        , x1{c}
+        , x1_start{c}
+        , y1{d}
+        , y1_start{d}
+        , dx{0}
+        , dy{1}
+    {
+    }
+
+    void draw()
+    {
+        framebuffer::draw_line(x0, y0, x1, y1, 0x00FF0000);
+    }
+
+    void move()
+    {
+        x0 += dx;
+        y0 += dy;
+
+        x1 -= dx;
+        y1 -= dy;
+
+        if (dy != 0) {
+            if (y0 == y1_start || y1 == y0_start) {
+                dy = 0;
+                dx = 1;
+            } else if (y0 == y0_start || y1 == y1_start) {
+                dy = 0;
+                dx = -1;
+            }
+        } else if (dx != 0) {
+            if (x0 == x1_start || x1 == x0_start) {
+                dy = -1;
+                dx = 0;
+            } else if (x0 == x0_start || x1 == x1_start) {
+                dy = 1;
+                dx = 0;
+            }
         }
     }
 };
@@ -108,35 +170,68 @@ public:
     }
 };
 
+class Text {
+public:
+    int x;
+    int y;
+    int fg;
+    int bg;
+    kstring str;
+    fonts::Font8x16 font;
+
+    Text(int x, int y, const char* c_str)
+        : x{x}
+        , y{y}
+        , fg{0x00FFFFFF}
+        , bg{-1}
+        , str{c_str}
+    {
+    }
+
+    void draw()
+    {
+        framebuffer::draw_str(x, y, &font, str, fg, bg);
+    }
+};
+
 static kvector<Square> squares;
+static kvector<Line> lines;
+static kvector<Text> texts;
 static Player* player;
 
 static void
-gui_render_kthread()
+gfx_render_kthread()
 {
-    constexpr int target_fps = 60;
-    constexpr int ms_per_frame = 1000 / target_fps;
+    constexpr float target_fps = 120;
+    constexpr float ms_per_frame = 1000 / target_fps;
     constexpr int us_per_frame = ms_per_frame * 1000;
 
     while (true) {
         framebuffer::clear_black();
 
-        player->draw();
-
         for (Square& square : squares) {
             square.draw();
         }
 
-        framebuffer::outline_rect(100, 100, 100, 100, 0x0000FFFF);
+        for (Line& line : lines) {
+            line.draw();
+        }
+
+        player->draw();
+
+        for (Text& text : texts) {
+            text.draw();
+        }
 
         scheduler::mechanism::yield_sleep_us(us_per_frame);
     }
 }
 
-static void gui_tick_kthread()
+static void gfx_tick_kthread()
 {
-    constexpr int target_fps = 100;
-    constexpr int ms_per_frame = 1000 / target_fps;
+    constexpr float target_fps = 100;
+    constexpr float ms_per_frame = 1000 / target_fps;
+    constexpr int us_per_frame = ms_per_frame * 1000;
 
     while (true) {
         player->move();
@@ -145,20 +240,28 @@ static void gui_tick_kthread()
             square.move();
         }
 
-        scheduler::mechanism::yield_sleep_ms(ms_per_frame);
+        for (Line& line : lines) {
+            line.move();
+        }
+
+        Text& text = texts.front();
+
+        text.str = fmt::sprintf("player at ({}, {})", player->x, player->y);
+
+        scheduler::mechanism::yield_sleep_us(us_per_frame);
     }
 }
 
-static void gui_input_kthread()
+static void gfx_input_kthread()
 {
     namespace keyboard = arch::drivers::keyboard;
 
-    using ScanCode = keyboard::ScanCode;
+    // using ScanCode = keyboard::ScanCode;
     using ExtendedScanCode = keyboard::ExtendedScanCode;
 
     while (true) {
         while (keyboard::KeyEvent* event = keyboard::poll()) {
-            keyboard::ScanCode scancode = event->scancode;
+            // keyboard::ScanCode scancode = event->scancode;
             keyboard::ExtendedScanCode extended = event->extended_scancode;
 
             // bool caps = event->shift_held || event->caps_lock_on;
@@ -193,12 +296,17 @@ void init()
     squares.emplace_back(100, 500, 50, 50, 3, 2, 0x00FF00FF);
     squares.emplace_back(666, 666, 25, 25, -5, -6, 0x00FFFF00);
     squares.emplace_back(50, 50, 200, 20, -3, 5, 0x0000FFFF);
+    squares.emplace_back(100, 100, 200, 200, 0, 0, 0x00D3D3D3);
+
+    lines.emplace_back(100, 100, 300, 300);
+
+    texts.emplace_back(0, 0, "this is a string");
 
     player = new Player{};
 
-    scheduler::mechanism::add_process(new process::KThread{gui_render_kthread});
-    scheduler::mechanism::add_process(new process::KThread{gui_tick_kthread});
-    scheduler::mechanism::add_process(new process::KThread{gui_input_kthread});
+    scheduler::mechanism::add_process(new process::KThread{gfx_render_kthread});
+    scheduler::mechanism::add_process(new process::KThread{gfx_tick_kthread});
+    scheduler::mechanism::add_process(new process::KThread{gfx_input_kthread});
 }
 
 }
