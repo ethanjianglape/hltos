@@ -98,7 +98,7 @@ void sleep_ms(std::uint64_t time_ms)
     const std::uint64_t target = get_time_ms() + time_ms;
 
     while (get_time_ms() < target) {
-        cpu::hlt();
+        cpu::pause();
     }
 }
 
@@ -107,7 +107,7 @@ void sleep_us(std::uint64_t time_us)
     const std::uint64_t target = get_time_us() + time_us;
 
     while (get_time_us() < target) {
-        cpu::hlt();
+        cpu::pause();
     }
 }
 

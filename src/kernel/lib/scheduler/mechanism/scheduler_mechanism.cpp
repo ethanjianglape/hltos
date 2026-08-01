@@ -1,4 +1,6 @@
 #include "arch/x64/drivers/tsc/tsc.hpp"
+#include "arch/x64/percpu/percpu.hpp"
+#include "exclusive/katomic.hpp"
 #include <arch.hpp>
 #include <containers/kmin_heap.hpp>
 #include <exclusive/kspinlock_irqsave.hpp>
@@ -19,6 +21,9 @@ static policy::SchedulerPolicy* g_scheduler_policy;
 static kspinlock_irqsave g_processes_lock;
 static klist<process::Process*> g_processes;
 static kmin_heap<std::uint64_t, process::Process*> g_sleepers;
+
+static katomic<std::uint64_t> g_preempt_skips;
+static katomic<std::uint64_t> g_preempts;
 
 /// @brief switch execution from one process to another
 ///
@@ -282,6 +287,20 @@ static void reaper_kthread()
     kpanic("reaper_kthread terminated");
 }
 
+[[noreturn]]
+static void debug_kthread()
+{
+    static constexpr std::uint64_t DEBUG_INTERVAL_MS = 2000;
+
+    while (true) {
+        log::debugf("preempts {}, skipped = {}", g_preempts.load(), g_preempt_skips.load());
+
+        yield_sleep_ms(DEBUG_INTERVAL_MS);
+    }
+
+    kpanic("scheduler: debug_kthread terminated");
+}
+
 /// @brief wake any due sleepers, then ask the policy which process runs next
 ///
 static process::Process* pick_next_process()
@@ -308,6 +327,18 @@ static void preempt()
         return;
     }
 
+    process::Process* current = arch::percpu::current_process();
+    process::Process* idle = arch::percpu::idle_process();
+
+    if (current != idle) {
+        std::uint64_t runtime_ns = arch::drivers::tsc::get_time_ns() - current->quantum_start_ns;
+
+        if (!g_scheduler_policy->should_preempt(current, runtime_ns)) {
+            g_preempt_skips += 1;
+            return;
+        }
+    }
+
     // ********************************
     // **** Begin Mutual Exclusion ****
     // ********************************
@@ -322,7 +353,6 @@ static void preempt()
 
     g_processes_lock.lock();
 
-    process::Process* current = arch::percpu::current_process();
     process::Process* next = pick_next_process();
 
     // We never want a process to context switch to itself, so we can
@@ -332,6 +362,8 @@ static void preempt()
         g_processes_lock.unlock();
         return;
     }
+
+    g_preempts += 1;
 
     current->pause();
     enqueue_if_runnable(current);
@@ -575,6 +607,7 @@ void init(policy::SchedulerPolicy* scheduler_policy)
     g_scheduler_policy->init();
 
     add_process(new process::KThread(reaper_kthread));
+    add_process(new process::KThread(debug_kthread));
 }
 
 }

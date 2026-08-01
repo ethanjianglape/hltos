@@ -85,6 +85,8 @@
 .type context_switch, @function
 context_switch:
     # Save callee-saved registers (building ContextFrame on current stack)
+    cli
+    
     push %rbp
     push %rbx
     push %r12
@@ -109,6 +111,8 @@ context_switch:
     pop %rbx
     pop %rbp
 
+    sti
+
     # Return to wherever the new process left off
     ret
 
@@ -128,6 +132,8 @@ context_switch:
 .global permanent_context_switch
 .type permanent_context_switch, @function
 permanent_context_switch:
+    cli
+    
     mov %rdi, %rsp
 
     # Restore callee-saved registers from the new stack
@@ -137,6 +143,8 @@ permanent_context_switch:
     pop %r12
     pop %rbx
     pop %rbp
+
+    sti
 
     # Return to wherever the new process left off
     ret

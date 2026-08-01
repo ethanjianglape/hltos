@@ -44,6 +44,7 @@ public:
     std::uint64_t wake_time_ns;
     std::uint64_t total_sleep_ns;
     std::uint64_t sleep_start_ns;
+    std::uint64_t quantum_start_ns;
 
     fs::Inode* cwd_inode;
 

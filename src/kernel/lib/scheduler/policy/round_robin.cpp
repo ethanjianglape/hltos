@@ -15,6 +15,13 @@ void RoundRobinScheduler::enqueue(process::Process* p)
     _ready.push_back(p);
 }
 
+bool RoundRobinScheduler::should_preempt(process::Process* p, std::uint64_t runtime_ns)
+{
+    kassert_not_null(p);
+
+    return runtime_ns >= TIME_SLICE_NS;
+}
+
 /// @brief pop the front of the ready queue
 ///
 /// @return pointer to the next ready process, or nullptr if the queue is empty

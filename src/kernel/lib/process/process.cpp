@@ -334,6 +334,7 @@ Process* Process::fork(arch::trap::SyscallFrame* parent_frame)
     forked->kernel_rsp = reinterpret_cast<std::uintptr_t>(forked->kernel_stack + KERNEL_STACK_SIZE);
     forked->total_sleep_ns = total_sleep_ns;
     forked->sleep_start_ns = sleep_start_ns;
+    forked->quantum_start_ns = quantum_start_ns;
     forked->wake_time_ns = wake_time_ns;
     forked->mmap_min_addr = DEFAULT_MMAP_MIN_ADDR;
     forked->fs_base = fs_base;
@@ -492,6 +493,7 @@ void Process::resume()
     wait_pid = -1;
     wake_time_ns = 0;
     sleep_start_ns = 0;
+    quantum_start_ns = arch::drivers::tsc::get_time_ns();
 }
 
 void Process::kill()

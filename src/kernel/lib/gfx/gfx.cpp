@@ -1,4 +1,5 @@
 #include "fmt/fmt.hpp"
+#include "log/log.hpp"
 #include <containers/kvector.hpp>
 #include <cstdint>
 #include <framebuffer/framebuffer.hpp>
@@ -291,6 +292,8 @@ static void gfx_input_kthread()
 
 void init()
 {
+    log::info("gfx: initialized");
+
     squares.emplace_back(0, 0, 10, 10, 1, 1, framebuffer::RGB_GREEN);
     squares.emplace_back(300, 300, 15, 15, 2, 1, framebuffer::RGB_RED);
     squares.emplace_back(100, 500, 50, 50, 3, 2, 0x00FF00FF);
