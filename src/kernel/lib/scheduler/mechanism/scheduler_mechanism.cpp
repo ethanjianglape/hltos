@@ -1,3 +1,4 @@
+#include "arch/x64/drivers/tsc/tsc.hpp"
 #include <arch.hpp>
 #include <containers/kmin_heap.hpp>
 #include <exclusive/kspinlock_irqsave.hpp>
@@ -131,14 +132,16 @@ static void wake_parents(int pid)
 
 /// @brief wake all sleeping processes that have a wake_time_ticks in the past
 ///
-void wake_sleepers()
+static void wake_sleepers()
 {
-    const std::uint64_t now_ticks = arch::drivers::tsc::raw_ticks();
+    const std::uint64_t now_ns = arch::drivers::tsc::get_time_ns();
 
     while (!g_sleepers.empty()) {
         process::Process* p = g_sleepers.peak();
 
-        if (now_ticks < p->wake_time_ticks) {
+        kassert_not_null(p);
+
+        if (now_ns < p->wake_time_ns) {
             break;
         }
 
@@ -265,7 +268,7 @@ static void reap()
 [[noreturn]]
 static void reaper_kthread()
 {
-    static constexpr std::uint64_t REAP_INTERVAL_MS = 100;
+    static constexpr std::uint64_t REAP_INTERVAL_MS = 1000;
 
     while (true) {
         reap();
@@ -435,38 +438,47 @@ int yield_to_child(int child_pid)
 
 /// @brief put the current process to sleep based on a desired frequency
 ///
-void yield_sleep_hz(std::uint64_t sleep_hz)
+/// @param hz the frequency to sleep at
+///
+void yield_sleep_hz(std::uint64_t hz)
 {
-    kassert(sleep_hz > 0);
+    kassert(hz > 0);
 
-    const std::uint64_t sleep_time_ms = 1000 / sleep_hz;
+    const std::uint64_t sleep_time_ms = 1000 / hz;
 
     yield_sleep_ms(sleep_time_ms);
 }
 
-/// @brief put the current process to sleep
+/// @brief put the current process to sleep for a specified millisecond value
 ///
-/// @param sleep_time_ms time in ms to sleep for
+/// @param duration_ms time in ms to sleep for
 ///
-void yield_sleep_ms(std::uint64_t sleep_time_ms)
+void yield_sleep_ms(std::uint64_t duration_ms)
 {
-    const std::uint64_t sleep_time_us = sleep_time_ms * 1000;
-    const std::uint64_t sleep_time_ns = sleep_time_us * 1000;
+    const std::uint64_t duration_us = duration_ms * 1000;
 
-    yield_sleep_ns(sleep_time_ns);
+    yield_sleep_us(duration_us);
 }
 
-void yield_sleep_us(std::uint64_t sleep_time_us)
+/// @brief put the current process to sleep for a specified microsecond value
+///
+/// @param duration_us time in us to sleep for
+///
+void yield_sleep_us(std::uint64_t duration_us)
 {
-    const std::uint64_t sleep_time_ns = sleep_time_us * 1000;
+    const std::uint64_t duration_ns = duration_us * 1000;
 
-    yield_sleep_ns(sleep_time_ns);
+    yield_sleep_ns(duration_ns);
 }
 
-void yield_sleep_ns(std::uint64_t sleep_time_ns)
+/// @brief put the current process to sleep for a specified nanosecond value
+///
+/// @param duration_ns time in ns to sleep for
+///
+void yield_sleep_ns(std::uint64_t duration_ns)
 {
     process::Process* current = arch::percpu::current_process();
-    current->sleep_until(arch::drivers::tsc::ticks_from_now(sleep_time_ns));
+    current->sleep_for(duration_ns);
     yield_blocked(process::WaitReason::SLEEP);
 }
 
@@ -482,7 +494,7 @@ void yield_blocked(process::WaitReason reason)
     current->wait_for(reason);
 
     if (reason == process::WaitReason::SLEEP) {
-        g_sleepers.insert(current->wake_time_ticks, current);
+        g_sleepers.insert(current->wake_time_ns, current);
     }
 
     process::Process* next = pick_next_process();

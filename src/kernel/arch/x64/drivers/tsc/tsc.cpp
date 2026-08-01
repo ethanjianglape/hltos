@@ -70,6 +70,11 @@ std::uint64_t ns_to_ticks(std::uint64_t ns)
     return secs * tsc_freq + (remainder_ns * tsc_freq) / 1000000000ULL;
 }
 
+std::uint64_t ns_to_raw_ticks(std::uint64_t ns)
+{
+    return ns_to_ticks(ns) + boot_tsc;
+}
+
 std::uint64_t ticks_from_now(std::uint64_t ns)
 {
     return raw_ticks() + ns_to_ticks(ns);
@@ -128,7 +133,7 @@ void init()
 
     tsc_freq = ((t1 - t0) * 1000) / total_ms;
 
-    log::infof("TSC: frequency = {}hz ({}Mhz)", tsc_freq, tsc_freq / 1000000);
+    log::infof("TSC: frequency = {}hz ({}Mhz) (calibrated by PIT)", tsc_freq, tsc_freq / 1000000);
 }
 
 }

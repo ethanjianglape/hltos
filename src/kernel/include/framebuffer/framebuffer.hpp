@@ -33,8 +33,8 @@ void invert_rec(std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t
 void draw_line(int x0, int y0, int x1, int y1, int color);
 void outline_rect(std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t h, std::uint32_t color);
 void fill_rect(std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t h, std::uint32_t color);
-void draw_str(int x, int y, gfx::fonts::Font* font, kstring_view str, int fg, int bg);
-void draw_char(int x, int y, gfx::fonts::Font* font, char c, int fg, int bg);
+void draw_str(std::uint32_t x, std::uint32_t y, gfx::fonts::Font* font, kstring_view str, int fg, int bg);
+void draw_char(std::uint32_t x, std::uint32_t y, gfx::fonts::Font* font, char c, int fg, int bg);
 
 void clear_black();
 void clear(std::uint32_t color);

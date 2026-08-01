@@ -84,14 +84,6 @@
  *   4. Better priority: 16 priority levels vs PIC's fixed priority
  *   5. Performance: No need to mask/unmask, just send EOI
  *
- * Timer Calibration:
- *
- *   The LAPIC timer runs at the CPU's bus frequency, which varies by system.
- *   We calibrate it by:
- *   1. Set a known count and start it
- *   2. Wait a known time (using PIT, which has a fixed frequency)
- *   3. Read how many ticks elapsed → now we know ticks/ms
- *   4. Configure periodic interrupts at our desired rate
  */
 
 #include "apic.hpp"
@@ -371,7 +363,7 @@ void configure_svr()
  *                   - 000 = Fixed (deliver to CPUs listed in destination)
  *                   - 001 = Lowest Priority (deliver to lowest-priority CPU)
  *                   - 010 = SMI (System Management Interrupt)
- *                   - 100 = NMI
+ *                   - 100 = NMI (Non-Maskable Interrupt)
  *                   - 101 = INIT
  *                   - 111 = ExtINT (external interrupt, legacy mode)
  *   - Bit 11:     Destination Mode (0 = Physical, 1 = Logical)
@@ -394,12 +386,12 @@ void ioapic_route_irq(std::uint8_t irq, std::uint8_t vector)
     const std::uint32_t gsi = acpi::madt::get_gsi_for_irq(irq);
     const acpi::madt::IOApic* ioapic = acpi::madt::get_ioapic_for_gsi(gsi);
 
-    if (ioapic == nullptr) {
-        kpanic("No IOAPIC found for GSI: ", gsi);
-    }
+    kassert_not_null(ioapic);
 
     const acpi::madt::InterruptSourceOverride* iso = acpi::madt::get_override_for_irq(irq);
     volatile std::uint8_t* ioapic_addr = acpi::madt::get_mapped_ioapic_addr(ioapic);
+
+    kassert_not_null(ioapic_addr);
 
     std::uint32_t pin = gsi - ioapic->gsi_base;
     std::uint64_t entry = vector;
@@ -436,10 +428,11 @@ static void apic_timer_handler(irq::InterruptFrame* frame)
     // If a sleeping process needs to wake before the next periodic tick would
     // otherwise fire, arm the timer for that deadline instead, so sleepers are
     // woken precisely rather than waiting for the next 1ms tick to notice them
-    process::Process* next_sleeper = scheduler::mechanism::get_next_sleeper();
+    process::Process* sleeper = scheduler::mechanism::get_next_sleeper();
 
-    if (next_sleeper != nullptr) {
-        const std::uint64_t sleeper_deadline = next_sleeper->wake_time_ticks;
+    if (sleeper != nullptr) {
+        const std::uint64_t sleeper_wake_time_ns = sleeper->wake_time_ns;
+        const std::uint64_t sleeper_deadline = tsc::ns_to_raw_ticks(sleeper_wake_time_ns);
 
         if (sleeper_deadline < interrupt_deadline) {
             interrupt_deadline = sleeper_deadline;
@@ -494,16 +487,18 @@ static void timer_init()
 
     // calculate the number of TSC ticks needed to achieve the desired interrupt frequency
     // based on the known frequency of the TSC (usually around 3-4Ghz)
-    constexpr std::uint64_t interrupt_frequency_ms = 1;
-    constexpr std::uint64_t interrupt_frequency_ns = interrupt_frequency_ms * 1000000;
+    constexpr std::uint64_t interrupt_frequency = 1000; // hz
+    constexpr std::uint64_t interrupt_frequency_ms = interrupt_frequency / 1000;
+    constexpr std::uint64_t interrupt_frequency_us = interrupt_frequency_ms * 1000;
+    constexpr std::uint64_t interrupt_frequency_ns = interrupt_frequency_us * 1000;
 
-    interrupt_delta = (tsc::get_tsc_freq() * interrupt_frequency_ns) / 1000000000;
+    interrupt_delta = tsc::ns_to_ticks(interrupt_frequency_ns);
     interrupt_deadline = interrupt_delta;
 
     // The TSC deadline value is written to an MSR, not the LAPIC itself
     cpu::wrmsr(IA32_TSC_DEADLINE, interrupt_deadline);
 
-    log::infof("APIC: TSC deadline mode @ {}ms ({} ticks)", interrupt_frequency_ms, interrupt_delta);
+    log::infof("APIC: TSC deadline mode @ {}hz, {} ms, {} ticks", interrupt_frequency, interrupt_frequency_ms, interrupt_delta);
 }
 
 /**

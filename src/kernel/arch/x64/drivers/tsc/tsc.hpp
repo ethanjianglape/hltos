@@ -16,6 +16,7 @@ std::uint64_t get_tsc_freq();
 
 std::uint64_t raw_ticks();
 std::uint64_t ns_to_ticks(std::uint64_t ns);
+std::uint64_t ns_to_raw_ticks(std::uint64_t ns);
 std::uint64_t ticks_from_now(std::uint64_t ns);
 
 void sleep_ms(std::uint64_t time_ms);

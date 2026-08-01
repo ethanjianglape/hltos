@@ -40,7 +40,10 @@ public:
     int wait_pid;
     int exit_status;
     std::uint64_t context_switches;
-    std::uint64_t wake_time_ticks;
+
+    std::uint64_t wake_time_ns;
+    std::uint64_t total_sleep_ns;
+    std::uint64_t sleep_start_ns;
 
     fs::Inode* cwd_inode;
 
@@ -98,7 +101,7 @@ public:
     void zombify();
     void wait_for(WaitReason reason);
     void wait_for_child(int child_pid);
-    void sleep_until(std::uint64_t wake_time_ticks);
+    void sleep_for(std::uint64_t duration_ns);
 
     void exec_elf64(std::uint8_t* buffer, std::size_t size, char* const argv[], char* const envp[]);
 };

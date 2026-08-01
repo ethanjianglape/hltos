@@ -1,3 +1,5 @@
+#include "arch/x64/drivers/tsc/tsc.hpp"
+#include "containers/kvector.hpp"
 #include <algo/algo.hpp>
 #include <arch.hpp>
 #include <console/console.hpp>
@@ -34,6 +36,8 @@ static bool needs_redraw = false;
 
 static kspinlock g_fb_spinlock;
 
+static kvector<std::uint64_t> redraw_times;
+
 std::uint32_t get_screen_width()
 {
     return fb_width;
@@ -44,7 +48,7 @@ std::uint32_t get_screen_height()
     return fb_height;
 }
 
-inline constexpr std::size_t get_pixel_offset(std::uint32_t x, std::uint32_t y)
+static inline constexpr std::size_t get_pixel_offset(std::uint32_t x, std::uint32_t y)
 {
     return (y * fb_pitch) + (x * (fb_bpp / 8));
 }
@@ -52,21 +56,57 @@ inline constexpr std::size_t get_pixel_offset(std::uint32_t x, std::uint32_t y)
 static void redraw()
 {
     g_fb_spinlock.lock();
+
     if (needs_redraw) {
-        memcpy(vram, static_cast<const std::uint8_t*>(vram_buff), vram_size);
+        const auto start = arch::drivers::tsc::get_time_us();
+
+        std::uint64_t* vram_ptr = reinterpret_cast<std::uint64_t*>(vram);
+        std::uint64_t* vram_buff_ptr = reinterpret_cast<std::uint64_t*>(vram_buff);
+
+        for (std::size_t i = 0; i < vram_size / 8; i++) {
+            *(vram_ptr + i) = *(vram_buff_ptr + i);
+        }
+
         needs_redraw = false;
+        const auto end = arch::drivers::tsc::get_time_us();
+        redraw_times.push_back(end - start);
     }
+
     g_fb_spinlock.unlock();
 }
 
 static void redraw_kthread()
 {
-    constexpr std::uint64_t target_fps = 120;
+    constexpr std::uint64_t target_hz = 120;
 
     while (true) {
         redraw();
 
-        scheduler::mechanism::yield_sleep_hz(target_fps);
+        scheduler::mechanism::yield_sleep_hz(target_hz);
+    }
+}
+
+static void debug_kthread()
+{
+    while (true) {
+        g_fb_spinlock.lock();
+
+        if (!redraw_times.empty()) {
+            std::uint64_t avg_us = 0;
+
+            for (std::uint64_t us : redraw_times) {
+                avg_us += us;
+            }
+
+            avg_us /= redraw_times.size();
+            redraw_times.clear();
+
+            log::debugf("framebuffer: average redraw time: {}us", avg_us);
+        }
+
+        g_fb_spinlock.unlock();
+
+        scheduler::mechanism::yield_sleep_ms(2000);
     }
 }
 
@@ -82,21 +122,22 @@ void init(const FrameBufferInfo& info)
     vram = info.vram;
     vram_end = vram + vram_size;
 
-    vram_buff = new std::uint8_t[vram_size]; // kalloc<std::uint8_t>(vram_size);
+    vram_buff = new std::uint8_t[vram_size];
     vram_buff_end = vram_buff + vram_size;
 
     scheduler::mechanism::add_process(new process::KThread(redraw_kthread));
+    scheduler::mechanism::add_process(new process::KThread(debug_kthread));
 
     log::infof("framebuffer: {}x{} @ {} bpp (pitch={})", fb_width, fb_height, fb_bpp, fb_pitch);
     log::infof("framebuffer: {} total pixels", fb_num_pixels);
     log::infof("framebuffer: VRAM @ [{} - {}] ({} bytes)", fmt::hex{vram}, fmt::hex{vram_end}, vram_size);
-    log::infof("framebuffer: VRAM double buffer @ [{} - {}]", fmt::hex{vram_buff}, fmt::hex{vram_buff_end});
+    log::infof("framebuffer: VRAM back buffer @ [{} - {}]", fmt::hex{vram_buff}, fmt::hex{vram_buff_end});
 }
 
 static std::uint32_t get_pixel(std::uint32_t x, std::uint32_t y)
 {
     std::uint32_t pixel = 0x00000000;
-    const auto offset = get_pixel_offset(x, y);
+    const std::size_t offset = get_pixel_offset(x, y);
 
     pixel |= vram_buff[offset + RGB_OFFB];
     pixel |= vram_buff[offset + RGB_OFFG] << 8;
@@ -105,13 +146,14 @@ static std::uint32_t get_pixel(std::uint32_t x, std::uint32_t y)
     return pixel;
 }
 
-static void draw_pixel(std::uint32_t x,
+static void draw_pixel(
+    std::uint32_t x,
     std::uint32_t y,
     std::uint8_t red,
     std::uint8_t green,
     std::uint8_t blue)
 {
-    const auto offset = get_pixel_offset(x, y);
+    const std::size_t offset = get_pixel_offset(x, y);
 
     vram_buff[offset + RGB_OFFB] = blue;
     vram_buff[offset + RGB_OFFG] = green;
@@ -122,9 +164,9 @@ static void draw_pixel(std::uint32_t x,
 
 static void draw_pixel(std::uint32_t x, std::uint32_t y, std::uint32_t color)
 {
-    const auto blue = color & 0xFF;
-    const auto green = (color >> 8) & 0xFF;
-    const auto red = (color >> 16) & 0xFF;
+    const std::uint8_t blue = color & 0xFF;
+    const std::uint8_t green = (color >> 8) & 0xFF;
+    const std::uint8_t red = (color >> 16) & 0xFF;
 
     draw_pixel(x, y, red, green, blue);
 }
@@ -239,11 +281,14 @@ void draw_line(int x0, int y0, int x1, int y1, int color)
 
 void outline_rect(std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t h, std::uint32_t color)
 {
+    kassert(x + w < fb_width);
+    kassert(y + h < fb_height);
+
     g_fb_spinlock.lock();
 
-    const auto blue = color & 0xFF;
-    const auto green = (color >> 8) & 0xFF;
-    const auto red = (color >> 16) & 0xFF;
+    const std::uint8_t blue = color & 0xFF;
+    const std::uint8_t green = (color >> 8) & 0xFF;
+    const std::uint8_t red = (color >> 16) & 0xFF;
 
     // top
     for (std::uint32_t px = x; px < x + w; px++) {
@@ -285,27 +330,29 @@ void fill_rect(std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t 
     g_fb_spinlock.unlock();
 }
 
-void draw_str(int x, int y, gfx::fonts::Font* font, kstring_view str, int fg, int bg)
+void draw_str(std::uint32_t x, std::uint32_t y, gfx::fonts::Font* font, kstring_view str, int fg, int bg)
 {
+    kassert_not_null(font);
+
     for (std::size_t i = 0; i < str.size(); i++) {
         draw_char(x + (i * font->font_width()), y, font, str[i], fg, bg);
     }
 }
 
-void draw_char(int x, int y, gfx::fonts::Font* font, char c, int fg, int bg)
+void draw_char(std::uint32_t x, std::uint32_t y, gfx::fonts::Font* font, char c, int fg, int bg)
 {
     kassert_not_null(font);
-    kassert(x >= 0 && x + font->font_width() < static_cast<int>(fb_width), "x out of bounds");
-    kassert(y >= 0 && y + font->font_height() < static_cast<int>(fb_height), "y out of bounds");
+    kassert(x + font->font_width() < fb_width, "x out of bounds");
+    kassert(y + font->font_height() < fb_height, "y out of bounds");
 
     g_fb_spinlock.lock();
 
     const std::uint8_t* glyph = font->get_glyph(c);
 
-    for (std::uint8_t gy = 0; gy < font->font_height(); gy++) {
+    for (int gy = 0; gy < font->font_height(); gy++) {
         const std::uint8_t byte = glyph[gy];
 
-        for (std::uint8_t gx = 0; gx < font->font_width(); gx++) {
+        for (int gx = 0; gx < font->font_width(); gx++) {
             const std::uint8_t pixel = (byte >> (font->font_width() - gx - 1)) & 1;
 
             if (pixel == 1) {
