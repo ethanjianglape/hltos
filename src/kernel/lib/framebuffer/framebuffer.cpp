@@ -1,4 +1,3 @@
-#include "arch/x64/drivers/tsc/tsc.hpp"
 #include "containers/kvector.hpp"
 #include <algo/algo.hpp>
 #include <arch.hpp>
@@ -13,7 +12,6 @@
 #include <memory/memory.hpp>
 #include <process/process.hpp>
 #include <scheduler/mechanism/scheduler_mechanism.hpp>
-#include <timer/timer.hpp>
 
 #include <cstdint>
 

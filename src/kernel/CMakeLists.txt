@@ -46,7 +46,6 @@ set(LIB_KERNEL_SOURCES
   ${LIB_DIR}/boot/limine-boot.cpp
   ${LIB_DIR}/containers/kstring.cpp
   ${LIB_DIR}/containers/kstring_view.cpp
-  ${LIB_DIR}/timer/timer.cpp
   ${LIB_DIR}/kpanic/kpanic.cpp
   ${LIB_DIR}/memory/memory.cpp
   ${LIB_DIR}/memory/pmm.cpp

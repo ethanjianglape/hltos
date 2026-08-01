@@ -4,7 +4,6 @@
 #include <framebuffer/framebuffer.hpp>
 #include <gfx/fonts/font8x16.hpp>
 #include <log/log.hpp>
-#include <timer/timer.hpp>
 
 #include <cstddef>
 #include <cstdint>

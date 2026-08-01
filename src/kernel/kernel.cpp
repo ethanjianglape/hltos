@@ -21,7 +21,6 @@
 #include <log/log.hpp>
 #include <scheduler/mechanism/scheduler_mechanism.hpp>
 #include <scheduler/policy/scheduler_policy.hpp>
-#include <timer/timer.hpp>
 
 #ifdef KERNEL_TESTS
 #include <test/test.hpp>
@@ -45,8 +44,6 @@ void kernel_main()
     x64::idt::init();
     x64::trap::init();
     x64::percpu::init();
-
-    // scheduler::mechanism::init(new scheduler::policy::RoundRobinScheduler{});
 
     console::init();
     fs::init();
