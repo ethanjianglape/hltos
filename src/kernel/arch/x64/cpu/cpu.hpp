@@ -10,7 +10,8 @@ struct InterruptFrame;
 
 namespace x64::cpu {
 
-void init();
+void early_init();
+void late_init();
 
 // Dump current CPU state (control regs, segment regs, flags)
 void dump();
@@ -82,6 +83,12 @@ inline void cpuid(std::uint32_t code, std::uint32_t* a, std::uint32_t* d)
 inline void cpuid(std::uint32_t code, std::uint32_t* eax, std::uint32_t* ebx, std::uint32_t* ecx)
 {
     asm volatile("cpuid" : "=a"(*eax), "=b"(*ebx), "=c"(*ecx) : "a"(code) : "edx", "memory");
+}
+
+[[gnu::always_inline]]
+inline void cpuid(std::uint32_t code, std::uint32_t* eax, std::uint32_t* ebx, std::uint32_t* ecx, std::uint32_t* edx)
+{
+    asm volatile("cpuid" : "=a"(*eax), "=b"(*ebx), "=c"(*ecx), "=d"(*edx) : "a"(code) : "memory");
 }
 
 [[gnu::always_inline]]
@@ -166,6 +173,18 @@ inline std::uint64_t read_cr4()
 inline void write_cr4(std::uint64_t cr4)
 {
     asm volatile("mov %0, %%cr4" : : "r"(cr4) : "memory");
+}
+
+[[gnu::always_inline]]
+inline void lfence()
+{
+    asm volatile("lfence");
+}
+
+[[gnu::always_inline]]
+inline void mfence()
+{
+    asm volatile("mfence");
 }
 
 }

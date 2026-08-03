@@ -1,7 +1,8 @@
-#include "containers/kvector.hpp"
 #include <algo/algo.hpp>
 #include <arch.hpp>
+#include <clock/clock.hpp>
 #include <console/console.hpp>
+#include <containers/kvector.hpp>
 #include <crt/crt.h>
 #include <exclusive/kspinlock.hpp>
 #include <fmt/fmt.hpp>
@@ -56,7 +57,7 @@ static void redraw()
     g_fb_spinlock.lock();
 
     if (needs_redraw) {
-        const auto start = arch::drivers::tsc::get_time_us();
+        const auto start = clock::get_time_us();
 
         std::uint64_t* vram_ptr = reinterpret_cast<std::uint64_t*>(vram);
         std::uint64_t* vram_buff_ptr = reinterpret_cast<std::uint64_t*>(vram_buff);
@@ -66,7 +67,7 @@ static void redraw()
         }
 
         needs_redraw = false;
-        const auto end = arch::drivers::tsc::get_time_us();
+        const auto end = clock::get_time_us();
         redraw_times.push_back(end - start);
     }
 

@@ -78,6 +78,7 @@ set(LIB_KERNEL_SOURCES
   ${LIB_DIR}/scheduler/mechanism/scheduler_mechanism.cpp
   ${LIB_DIR}/scheduler/policy/round_robin.cpp
   ${LIB_DIR}/gfx/gfx.cpp
+  ${LIB_DIR}/clock/clock.cpp
 )
 
 # Test sources (only compiled when KERNEL_TESTS is ON)

@@ -9,6 +9,7 @@
 #include "cpu.hpp"
 
 #include <arch/x64/interrupts/irq.hpp>
+#include <cstdint>
 #include <fmt/fmt.hpp>
 #include <log/log.hpp>
 
@@ -139,10 +140,56 @@ static void enable_sse()
     write_cr0(cr0);
 }
 
-void init()
+// Vendor ID string ("AuthenticAMD") is returned across EBX:EDX:ECX by CPUID.0
+static bool is_amd()
+{
+    constexpr std::uint32_t AMD_MAGIC_EBX = 0x68747541; // "Auth"
+    constexpr std::uint32_t AMD_MAGIC_EDX = 0x69746e65; // "enti"
+    constexpr std::uint32_t AMD_MAGIC_ECX = 0x444d4163; // "cAMD"
+
+    std::uint32_t eax;
+    std::uint32_t ebx;
+    std::uint32_t ecx;
+    std::uint32_t edx;
+
+    cpuid(0, &eax, &ebx, &ecx, &edx);
+
+    return ebx == AMD_MAGIC_EBX && edx == AMD_MAGIC_EDX && ecx == AMD_MAGIC_ECX;
+}
+
+/// @brief sets bit 1 of MSR 0xC001_1029 (DE_CFG)
+///
+/// On AMD, LFENCE is only guaranteed dispatch-serializing (i.e. usable as a
+/// speculation barrier / to order RDTSC) if DE_CFG bit 1 is set.
+///
+/// Intel guarantees this unconditionally; AMD requires the OS to opt in.
+///
+/// Every mainstream OS sets this at boot as part of the Spectre v1 mitigation, so we
+/// do the same rather than relying on firmware having done it for us.
+///
+/// @see https://en.wikipedia.org/wiki/Spectre_(security_vulnerability)
+static void enable_amd_lfence_serializing()
+{
+    constexpr std::uint32_t MSR_AMD_DE_CFG = 0xC0011029;
+    constexpr std::uint64_t DE_CFG_LFENCE_SERIALIZE = (1ULL << 1);
+
+    const std::uint64_t de_cfg = rdmsr(MSR_AMD_DE_CFG);
+    wrmsr(MSR_AMD_DE_CFG, de_cfg | DE_CFG_LFENCE_SERIALIZE);
+
+    log::info("CPU: AMD detected, enabled LFENCE dispatch-serialization (Spectre v1 mitigation, DE_CFG bit 1)");
+}
+
+void early_init()
 {
     cli();
     enable_sse();
+}
+
+void late_init()
+{
+    if (is_amd()) {
+        enable_amd_lfence_serializing();
+    }
 }
 
 // =========================================================================

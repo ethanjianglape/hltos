@@ -1,8 +1,7 @@
-#include "arch/x64/drivers/tsc/tsc.hpp"
-#include "arch/x64/percpu/percpu.hpp"
-#include "exclusive/katomic.hpp"
 #include <arch.hpp>
+#include <clock/clock.hpp>
 #include <containers/kmin_heap.hpp>
+#include <exclusive/katomic.hpp>
 #include <exclusive/kspinlock_irqsave.hpp>
 #include <kassert/kassert.hpp>
 #include <kpanic/kpanic.hpp>
@@ -115,6 +114,8 @@ cleanup:
     g_processes_lock.unlock();
 }
 
+/// @brief wakes every process that is waiting on pid
+///
 static void wake_parents(int pid)
 {
     for (std::size_t i = 0; i < g_processes.size(); i++) {
@@ -135,11 +136,11 @@ static void wake_parents(int pid)
     }
 }
 
-/// @brief wake all sleeping processes that have a wake_time_ticks in the past
+/// @brief wake every sleeping process that is past their waking time
 ///
 static void wake_sleepers()
 {
-    const std::uint64_t now_ns = arch::drivers::tsc::get_time_ns();
+    const std::uint64_t now_ns = clock::get_time_ns();
 
     while (!g_sleepers.empty()) {
         process::Process* p = g_sleepers.peak();
@@ -330,8 +331,9 @@ static void preempt()
     process::Process* current = arch::percpu::current_process();
     process::Process* idle = arch::percpu::idle_process();
 
+    // the idle process should always be preempted
     if (current != idle) {
-        std::uint64_t runtime_ns = arch::drivers::tsc::get_time_ns() - current->quantum_start_ns;
+        std::uint64_t runtime_ns = clock::get_time_ns() - current->quantum_start_ns;
 
         if (!g_scheduler_policy->should_preempt(current, runtime_ns)) {
             g_preempt_skips += 1;

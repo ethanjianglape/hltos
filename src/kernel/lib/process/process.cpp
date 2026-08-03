@@ -1,4 +1,5 @@
 #include <arch.hpp>
+#include <clock/clock.hpp>
 #include <crt/crt.h>
 #include <exclusive/katomic.hpp>
 #include <fmt/fmt.hpp>
@@ -473,7 +474,7 @@ void Process::wake()
     state = ProcessState::READY;
     wait_reason = WaitReason::NONE;
     wait_pid = -1;
-    total_sleep_ns = arch::drivers::tsc::get_time_ns() - sleep_start_ns;
+    total_sleep_ns = clock::get_time_ns() - sleep_start_ns;
     wake_time_ns = 0;
     sleep_start_ns = 0;
 }
@@ -493,7 +494,7 @@ void Process::resume()
     wait_pid = -1;
     wake_time_ns = 0;
     sleep_start_ns = 0;
-    quantum_start_ns = arch::drivers::tsc::get_time_ns();
+    quantum_start_ns = clock::get_time_ns();
 }
 
 void Process::kill()
@@ -526,7 +527,7 @@ void Process::wait_for_child(int child_pid)
 void Process::sleep_for(std::uint64_t duration_ns)
 {
     wait_for(WaitReason::SLEEP);
-    this->sleep_start_ns = arch::drivers::tsc::get_time_ns();
+    this->sleep_start_ns = clock::get_time_ns();
     this->wake_time_ns = sleep_start_ns + duration_ns;
 }
 

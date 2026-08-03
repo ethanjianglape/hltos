@@ -12,16 +12,44 @@ namespace x64::drivers::tsc {
 static std::uint64_t boot_tsc = 0;
 static std::uint64_t tsc_freq = 0;
 
-inline std::uint64_t rdtsc()
+[[gnu::always_inline]]
+static inline std::uint64_t rdtsc()
 {
-    std::uint64_t rax;
-    std::uint64_t rdx;
+    std::uint64_t eax;
+    std::uint64_t edx;
 
-    asm volatile("rdtsc" : "=a"(rax), "=d"(rdx) : :);
+    asm volatile("rdtsc" : "=a"(eax), "=d"(edx) : :);
 
-    std::uint64_t tsc = (rdx << 32) | rax;
+    std::uint64_t tsc = (edx << 32) | eax;
 
     return tsc;
+}
+
+[[gnu::always_inline]]
+static inline std::uint64_t rdtscp()
+{
+    std::uint64_t eax;
+    std::uint64_t ecx;
+    std::uint64_t edx;
+
+    asm volatile("rdtscp" : "=a"(eax), "=c"(ecx), "=d"(edx) : :);
+
+    std::uint64_t tsc = (edx << 32) | eax;
+
+    return tsc;
+}
+
+[[gnu::always_inline]]
+static inline std::uint64_t micro_bench_start()
+{
+    cpu::lfence();
+    return rdtsc();
+}
+
+[[gnu::always_inline]]
+static inline std::uint64_t micro_bench_end()
+{
+    return rdtscp();
 }
 
 std::uint64_t get_ticks()
@@ -117,11 +145,11 @@ void init()
         kpanic("Invariant TSC not available");
     }
 
-    boot_tsc = rdtsc();
+    boot_tsc = micro_bench_start();
 
     const std::uint64_t t0 = boot_tsc;
-    const std::uint32_t sleep_ms = 20;
-    const std::uint32_t total_ms = 100;
+    constexpr std::uint32_t sleep_ms = 20;
+    constexpr std::uint32_t total_ms = 100;
 
     // sleep for a total of 100ms (5 x 20ms)
     // note: the PIT physically cannot sleep for longer than ~54ms at a time
@@ -129,7 +157,7 @@ void init()
         x64::drivers::pit::sleep_ms(sleep_ms);
     }
 
-    const std::uint64_t t1 = rdtsc();
+    const std::uint64_t t1 = micro_bench_end();
 
     tsc_freq = ((t1 - t0) * 1000) / total_ms;
 

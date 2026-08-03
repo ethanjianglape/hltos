@@ -29,7 +29,7 @@
 [[noreturn]]
 void kernel_main()
 {
-    x64::cpu::init();
+    x64::cpu::early_init();
     x64::percpu::early_init();
     x64::drivers::serial::init();
     x64::drivers::tsc::init();
@@ -42,6 +42,7 @@ void kernel_main()
 
     x64::gdt::init();
     x64::idt::init();
+    x64::cpu::late_init();
     x64::trap::init();
     x64::percpu::init();
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <clock/clock.hpp>
 #include <containers/kstring.hpp>
 #include <containers/kstring_view.hpp>
 #include <kprint/kprint.hpp>
@@ -10,8 +11,8 @@ namespace log {
 
 inline void print_timestamp()
 {
-    const auto ns = arch::drivers::tsc::get_time_us();
-    kprint("[t=", ns, "us] ");
+    const auto us = clock::get_time_us();
+    kprint("[t=", us, "us] ");
 }
 
 template <typename... Ts>
