@@ -125,7 +125,7 @@ void init(const FrameBufferInfo& info)
     vram_buff_end = vram_buff + vram_size;
 
     scheduler::mechanism::add_process(new process::KThread(redraw_kthread));
-    scheduler::mechanism::add_process(new process::KThread(debug_kthread));
+    // scheduler::mechanism::add_process(new process::KThread(debug_kthread));
 
     log::infof("framebuffer: {}x{} @ {} bpp (pitch={})", fb_width, fb_height, fb_bpp, fb_pitch);
     log::infof("framebuffer: {} total pixels", fb_num_pixels);

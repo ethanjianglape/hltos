@@ -1,10 +1,10 @@
 #pragma once
 
-#include "fmt/fmt.hpp"
 #include <concepts>
 #include <containers/klist.hpp>
 #include <containers/kstring.hpp>
 #include <containers/kvector.hpp>
+#include <fmt/fmt.hpp>
 
 namespace algo {
 // Splits a string into components around a delim.
@@ -74,32 +74,36 @@ kstring join(const klist<T>& list, char delim = ' ')
     return result;
 }
 
-template <std::integral T>
-T max(T a, T b)
+inline constexpr auto max(std::integral auto a, std::integral auto b)
 {
     return a > b ? a : b;
 }
 
-template <std::integral T>
-T min(T a, T b)
+inline constexpr auto min(std::integral auto a, std::integral auto b)
 {
     return a < b ? a : b;
 }
 
-template <std::signed_integral T>
-T abs(T t)
+inline constexpr auto abs(std::signed_integral auto t)
 {
     return t < 0 ? -t : t;
 }
 
-auto abs(std::integral auto t)
+inline constexpr auto abs(std::unsigned_integral auto t)
 {
     return t;
 }
 
-auto sqr(std::integral auto t)
+inline constexpr auto sqr(std::integral auto t)
 {
     return t * t;
+}
+
+inline constexpr void swap(auto* a, auto* b)
+{
+    auto temp = *a;
+    *a = *b;
+    *b = temp;
 }
 
 }

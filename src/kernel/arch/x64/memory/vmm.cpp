@@ -643,6 +643,10 @@ PML4E* create_user_pml4()
 
 void free_user_pml4(PML4E* pml4)
 {
+    if (pml4 == kernel_pml4) {
+        return;
+    }
+
     g_vmm_lock.lock();
 
     std::size_t kernel_start = get_kernel_pml4_index();

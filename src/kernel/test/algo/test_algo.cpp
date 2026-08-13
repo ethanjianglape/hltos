@@ -201,6 +201,89 @@ void test_tokenize_leading_trailing()
     test::assert_true(parts[3] == "", "tokenize leading/trailing: [3] is empty");
 }
 
+void test_minmax()
+{
+    test::assert_eq(algo::min(0, 0), 0, "min equal: both zero");
+    test::assert_eq(algo::min(0, 10), 0, "min positive: first arg smaller");
+    test::assert_eq(algo::min(10, 0), 0, "min positive: second arg smaller");
+    test::assert_eq(algo::min(-10, 5), -10, "min mixed sign: negative first");
+    test::assert_eq(algo::min(5, -10), -10, "min mixed sign: negative second");
+    test::assert_eq(algo::min(-500, -10), -500, "min both negative: -500 smaller than -10");
+    test::assert_eq(algo::min(7u, 7u), 7u, "min unsigned: equal values");
+    test::assert_eq(algo::min(3u, 9u), 3u, "min unsigned: first arg smaller");
+    test::assert_eq(algo::min(0u, 42u), 0u, "min unsigned: zero is smallest");
+    test::assert_eq(algo::min(0xFFFFFFFFu, 1u), 1u, "min unsigned: near-max vs small value");
+
+    test::assert_eq(algo::max(0, 0), 0, "max equal: both zero");
+    test::assert_eq(algo::max(10, 0), 10, "max positive: first arg larger");
+    test::assert_eq(algo::max(0, 10), 10, "max positive: second arg larger");
+    test::assert_eq(algo::max(-10, 5), 5, "max mixed sign: positive wins over negative first");
+    test::assert_eq(algo::max(5, -10), 5, "max mixed sign: positive wins over negative second");
+    test::assert_eq(algo::max(-500, -10), -10, "max both negative: -10 larger than -500");
+    test::assert_eq(algo::max(7u, 7u), 7u, "max unsigned: equal values");
+    test::assert_eq(algo::max(3u, 9u), 9u, "max unsigned: second arg larger");
+    test::assert_eq(algo::max(0u, 42u), 42u, "max unsigned: nonzero beats zero");
+    test::assert_eq(algo::max(0xFFFFFFFFu, 1u), 0xFFFFFFFFu, "max unsigned: near-max vs small value");
+}
+
+void test_abs()
+{
+    test::assert_eq(algo::abs(0), 0, "abs zero: signed zero stays zero");
+    test::assert_eq(algo::abs(5), 5, "abs positive: signed positive stays positive");
+    test::assert_eq(algo::abs(-5), 5, "abs negative: signed negative becomes positive");
+    test::assert_eq(algo::abs(-500), 500, "abs negative: large signed negative");
+
+    test::assert_eq(algo::abs(0u), 0u, "abs unsigned zero: stays zero");
+    test::assert_eq(algo::abs(5u), 5u, "abs unsigned: unchanged");
+    test::assert_eq(algo::abs(0xFFFFFFFFu), 0xFFFFFFFFu, "abs unsigned: near-max unchanged");
+}
+
+void test_sqr()
+{
+    test::assert_eq(algo::sqr(0), 0, "sqr zero: signed zero squared is zero");
+    test::assert_eq(algo::sqr(1), 1, "sqr one: signed one squared is one");
+    test::assert_eq(algo::sqr(5), 25, "sqr positive: signed positive squared");
+    test::assert_eq(algo::sqr(-5), 25, "sqr negative: signed negative squared is positive");
+    test::assert_eq(algo::sqr(-1), 1, "sqr negative one: squared is one");
+
+    test::assert_eq(algo::sqr(0u), 0u, "sqr unsigned zero: squared is zero");
+    test::assert_eq(algo::sqr(5u), 25u, "sqr unsigned: unsigned squared");
+    test::assert_eq(algo::sqr(12u), 144u, "sqr unsigned: larger unsigned squared");
+}
+
+void test_swap()
+{
+    int a = 1;
+    int b = 2;
+    algo::swap(&a, &b);
+    test::assert_eq(a, 2, "swap int: a takes b's value");
+    test::assert_eq(b, 1, "swap int: b takes a's value");
+
+    int x = 5;
+    int y = 5;
+    algo::swap(&x, &y);
+    test::assert_eq(x, 5, "swap equal: x unchanged when values equal");
+    test::assert_eq(y, 5, "swap equal: y unchanged when values equal");
+
+    int neg1 = -10;
+    int neg2 = 20;
+    algo::swap(&neg1, &neg2);
+    test::assert_eq(neg1, 20, "swap mixed sign: neg1 takes positive value");
+    test::assert_eq(neg2, -10, "swap mixed sign: neg2 takes negative value");
+
+    unsigned int u1 = 3u;
+    unsigned int u2 = 9u;
+    algo::swap(&u1, &u2);
+    test::assert_eq(u1, 9u, "swap unsigned: u1 takes u2's value");
+    test::assert_eq(u2, 3u, "swap unsigned: u2 takes u1's value");
+
+    kstring s1 = "hello";
+    kstring s2 = "world";
+    algo::swap(&s1, &s2);
+    test::assert_true(s1 == "world", "swap kstring: s1 takes s2's value");
+    test::assert_true(s2 == "hello", "swap kstring: s2 takes s1's value");
+}
+
 void run()
 {
     log::info("Running algo tests...");
@@ -225,7 +308,13 @@ void run()
     test_tokenize_basic();
     test_tokenize_keeps_empty();
     test_tokenize_leading_trailing();
+
+    test_minmax();
+    test_abs();
+    test_sqr();
+    test_swap();
 }
+
 }
 
 #endif // KERNEL_TESTS

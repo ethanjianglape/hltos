@@ -1,0 +1,371 @@
+[2J[001;001H[=3h[2J[001;001H[2J[001;001H[8;056;240t[2J[001;001H[2J[001;001H[=3h[2J[001;001H[2J[001;001H[8;042;160t[2J[001;001HBdsDxe: loading Boot0002 "UEFI QEMU DVD-ROM QM00003 " from PciRoot(0x0)/Pci(0x1,0x1)/Ata(Secondary,Master,0x0)
+BdsDxe: starting Boot0002 "UEFI QEMU DVD-ROM QM00003 " from PciRoot(0x0)/Pci(0x1,0x1)/Ata(Secondary,Master,0x0)
+[001;001H[001;001H
+
+
+[t=100000us] <INFO> TSC: frequency = 4492369800hz (4492Mhz) (calibrated by PIT)
+[t=101042us] <INFO> limine: parsing headers
+[t=101621us] <INFO> Physical RAM map contains 36 entries:
+[t=102398us] <INFO>   [0x0000 - 0x00087000] (0x00087000 bytes) Usable
+[t=103316us] <INFO>   [0x00087000 - 0x00088000] (0x1000 bytes) Bootloader Reclaimable
+[t=104459us] <INFO>   [0x00088000 - 0x000A0000] (0x00018000 bytes) Usable
+[t=105478us] <INFO>   [0x00100000 - 0x00800000] (0x00700000 bytes) Usable
+[t=106505us] <INFO>   [0x00800000 - 0x00808000] (0x8000 bytes) ACPI NVS
+[t=107500us] <INFO>   [0x00808000 - 0x0080B000] (0x3000 bytes) Usable
+[t=108477us] <INFO>   [0x0080B000 - 0x0080C000] (0x1000 bytes) ACPI NVS
+[t=109445us] <INFO>   [0x0080C000 - 0x00812000] (0x6000 bytes) Usable
+[t=110388us] <INFO>   [0x00812000 - 0x00813000] (0x1000 bytes) Reserved
+[t=111364us] <INFO>   [0x00813000 - 0x00814000] (0x1000 bytes) Usable
+[t=112324us] <INFO>   [0x00814000 - 0x00900000] (0x000EC000 bytes) ACPI NVS
+[t=113359us] <INFO>   [0x00900000 - 0x01780000] (0x00E80000 bytes) Bootloader Reclaimable
+[t=114595us] <INFO>   [0x01780000 - 0x19CF8000] (0x18578000 bytes) Usable
+[t=115713us] <INFO>   [0x19CF8000 - 0x19D14000] (0x0001C000 bytes) Kernel and Modules
+[t=116868us] <INFO>   [0x19D14000 - 0x19D17000] (0x3000 bytes) Usable
+[t=117809us] <INFO>   [0x19D17000 - 0x19D92000] (0x0007B000 bytes) Kernel and Modules
+[t=118964us] <INFO>   [0x19D92000 - 0x1A173000] (0x003E1000 bytes) Bootloader Reclaimable
+[t=120210us] <INFO>   [0x1A173000 - 0x1A1AB000] (0x00038000 bytes) Usable
+[t=121209us] <INFO>   [0x1A1AB000 - 0x1A1EE000] (0x00043000 bytes) Bootloader Reclaimable
+[t=122422us] <INFO>   [0x1A1EE000 - 0x1BEEE000] (0x01D00000 bytes) Usable
+[t=123430us] <INFO>   [0x1BEEE000 - 0x1BF24000] (0x00036000 bytes) Bootloader Reclaimable
+[t=124644us] <INFO>   [0x1BF24000 - 0x1E20C000] (0x022E8000 bytes) Usable
+[t=125656us] <INFO>   [0x1E20C000 - 0x1EB3F000] (0x00933000 bytes) Bootloader Reclaimable
+[t=126909us] <INFO>   [0x1EB3F000 - 0x1EC00000] (0x000C1000 bytes) Reserved
+[t=127940us] <INFO>   [0x1EC00000 - 0x1F8ED000] (0x00CED000 bytes) Bootloader Reclaimable
+[t=129163us] <INFO>   [0x1F8ED000 - 0x1F9ED000] (0x00100000 bytes) Reserved
+[t=130194us] <INFO>   [0x1F9ED000 - 0x1FAED000] (0x00100000 bytes) Reserved
+[t=131230us] <INFO>   [0x1FAED000 - 0x1FB6D000] (0x00080000 bytes) Reserved
+[t=132283us] <INFO>   [0x1FB6D000 - 0x1FB7F000] (0x00012000 bytes) ACPI Reclaimable
+[t=133426us] <INFO>   [0x1FB7F000 - 0x1FBFF000] (0x00080000 bytes) ACPI NVS
+[t=134463us] <INFO>   [0x1FBFF000 - 0x1FEF4000] (0x002F5000 bytes) Bootloader Reclaimable
+[t=135688us] <INFO>   [0x1FEF4000 - 0x1FF78000] (0x00084000 bytes) Reserved
+[t=136726us] <INFO>   [0x1FF78000 - 0x20000000] (0x00088000 bytes) ACPI NVS
+[t=137762us] <INFO>   [0x80000000 - 0x803E8000] (0x003E8000 bytes) Framebuffer
+[t=138863us] <INFO>   [0xFEFFC000 - 0xFF000000] (0x4000 bytes) Reserved
+[t=139844us] <INFO>   [0x00FD00000000 - 0x010000000000] (0x000300000000 bytes) Reserved
+[t=141044us] <INFO> Total usable memory: 461 MiB
+[t=141718us] <INFO> VMM: Kernel HHDM @ 0xFFFF800000000000
+[t=142515us] <INFO> VMM: Kernel PML4 @ 0xFFFF80001BF1E000
+[t=143336us] <INFO> VMM: cr4 = 0x00300EA0 (0b001100000000111010100000)
+[t=144335us] <INFO> scheduler: round robin scheduler initialized
+[t=145221us] <INFO> Parsing ACPI headers:
+[t=145793us] <INFO> RSDP address: 0xFFFF80001FB7E014
+[t=146522us] <INFO> XSDP:
+[t=146882us] <INFO>   signature    = "RSD PTR "
+[t=147540us] <INFO>   checksum     = 54
+[t=148092us] <INFO>   oem_id       = BOCHS 
+[t=148695us] <INFO>   revision     = 2
+[t=149230us] <INFO>   rsdt_addr    = 0x1FB7D074
+[t=149888us] <INFO>   length       = 36
+[t=150462us] <INFO>   xsdt_addr    = 0x1FB7D0E8
+[t=151116us] <INFO>   ext_checksum = 78
+[t=151660us] <INFO>   reserved     = [0, 0, 0]
+[t=152302us] <INFO> XSDP legacy checksum valid
+[t=152940us] <INFO> XSDP extended checksum valid
+[t=153613us] <INFO> ACPIHeader:
+[t=154056us] <INFO>   signature        = "XSDT"
+[t=154712us] <INFO>   length           = 76
+[t=155319us] <INFO>   revision         = 1
+[t=155904us] <INFO>   checksum         = 65
+[t=156541us] <INFO>   oem_id           = BOCHS 
+[t=157198us] <INFO>   oem_table_id     = BXPC    
+[t=157880us] <INFO>   oem_revision     = 1
+[t=158468us] <INFO>   creator_id       = 0x20202020
+[t=159177us] <INFO>   creator_revision = 16777235
+[t=159855us] <INFO> XSDT entries = 5
+[t=160367us] <INFO> ACPI table checksum valid: XSDT
+[t=161082us] <INFO> ACPIHeader:
+[t=161522us] <INFO>   signature        = "FACP"
+[t=162207us] <INFO>   length           = 116
+[t=162822us] <INFO>   revision         = 1
+[t=163408us] <INFO>   checksum         = 27
+[t=164006us] <INFO>   oem_id           = BOCHS 
+[t=164661us] <INFO>   oem_table_id     = BXPC    
+[t=165342us] <INFO>   oem_revision     = 1
+[t=165926us] <INFO>   creator_id       = 0x43505842
+[t=166635us] <INFO>   creator_revision = 1
+[t=167223us] <INFO> ACPI table checksum valid: FACP
+[t=167939us] <INFO> Skipping unhandled ACPI table: FACP
+[t=168730us] <INFO> ACPIHeader:
+[t=169173us] <INFO>   signature        = "APIC"
+[t=169829us] <INFO>   length           = 120
+[t=170444us] <INFO>   revision         = 3
+[t=171028us] <INFO>   checksum         = 136
+[t=171644us] <INFO>   oem_id           = BOCHS 
+[t=172298us] <INFO>   oem_table_id     = BXPC    
+[t=172977us] <INFO>   oem_revision     = 1
+[t=173565us] <INFO>   creator_id       = 0x43505842
+[t=174300us] <INFO>   creator_revision = 1
+[t=174892us] <INFO> ACPI table checksum valid: APIC
+[t=175609us] <INFO> MADT:
+[t=175969us] <INFO>   lapic_addr = 0xFEE00000
+[t=176600us] <INFO>   flags      = 0b0001
+[t=177178us] <INFO> Local APIC:
+[t=177620us] <INFO>   acpi_processor_id = 0
+[t=178222us] <INFO>   apic_id           = 0
+[t=178821us] <INFO>   flags             = 0b0001
+[t=179491us] <INFO> IOAPIC:
+[t=179875us] <INFO>   ioapic_id   = 0
+[t=180416us] <INFO>   ioapic_addr = 0xFEC00000
+[t=181057us] <INFO>   gsi_base    = 0x0000
+[t=181643us] <INFO> Interrupt Source Override:
+[t=182293us] <INFO>   bus    = 0
+[t=182756us] <INFO>   source = 0 -> gsi = 2
+[t=183373us] <INFO>   flags  = 0b0000
+[t=183892us] <INFO> Interrupt Source Override:
+[t=184534us] <INFO>   bus    = 0
+[t=184986us] <INFO>   source = 5 -> gsi = 5
+[t=185586us] <INFO>   flags  = 0b1101
+[t=186135us] <INFO> Interrupt Source Override:
+[t=186772us] <INFO>   bus    = 0
+[t=187227us] <INFO>   source = 9 -> gsi = 9
+[t=187825us] <INFO>   flags  = 0b1101
+[t=188346us] <INFO> Interrupt Source Override:
+[t=188984us] <INFO>   bus    = 0
+[t=189441us] <INFO>   source = 10 -> gsi = 10
+[t=190073us] <INFO>   flags  = 0b1101
+[t=190593us] <INFO> Interrupt Source Override:
+[t=191238us] <INFO>   bus    = 0
+[t=191690us] <INFO>   source = 11 -> gsi = 11
+[t=192348us] <INFO>   flags  = 0b1101
+[t=192866us] <INFO> Local APIC NMI:
+[t=193359us] <INFO>   acpi_processor_id = 255
+[t=193983us] <INFO>   flags             = 0b0000
+[t=194652us] <INFO>   lint              = 1
+[t=195254us] <INFO> ACPIHeader:
+[t=195691us] <INFO>   signature        = "HPET"
+[t=196350us] <INFO>   length           = 56
+[t=196951us] <INFO>   revision         = 1
+[t=197541us] <INFO>   checksum         = 180
+[t=198227us] <INFO>   oem_id           = BOCHS 
+[t=198893us] <INFO>   oem_table_id     = BXPC    
+[t=199597us] <INFO>   oem_revision     = 1
+[t=200191us] <INFO>   creator_id       = 0x43505842
+[t=200892us] <INFO>   creator_revision = 1
+[t=201478us] <INFO> ACPI table checksum valid: HPET
+[t=202187us] <INFO> HPET:
+[t=202546us] <INFO>   hardware_rev_id  = 1
+[t=203131us] <INFO>   comparator_count = 2
+[t=203719us] <INFO>   counter_size     = 1
+[t=204335us] <INFO>   hpet_number      = 0
+[t=204972us] <INFO>   minimum_tick     = 0
+[t=205560us] <INFO>   page_protection  = 0
+[t=206157us] <INFO>   address          = 0xFED00000
+[t=206869us] <INFO> ACPIHeader:
+[t=207310us] <INFO>   signature        = "WAET"
+[t=207962us] <INFO>   length           = 40
+[t=208566us] <INFO>   revision         = 1
+[t=209153us] <INFO>   checksum         = 57
+[t=209751us] <INFO>   oem_id           = BOCHS 
+[t=210434us] <INFO>   oem_table_id     = BXPC    
+[t=211116us] <INFO>   oem_revision     = 1
+[t=211700us] <INFO>   creator_id       = 0x43505842
+[t=212460us] <INFO>   creator_revision = 1
+[t=213049us] <INFO> ACPI table checksum valid: WAET
+[t=213773us] <INFO> Skipping unhandled ACPI table: WAET
+[t=214534us] <INFO> ACPIHeader:
+[t=214972us] <INFO>   signature        = "BGRT"
+[t=215630us] <INFO>   length           = 56
+[t=216260us] <INFO>   revision         = 1
+[t=216845us] <INFO>   checksum         = 70
+[t=217445us] <INFO>   oem_id           = INTEL 
+[t=218101us] <INFO>   oem_table_id     = EDK2    
+[t=218780us] <INFO>   oem_revision     = 2
+[t=219421us] <INFO>   creator_id       = 0x20202020
+[t=220140us] <INFO>   creator_revision = 16777235
+[t=220832us] <INFO> ACPI table checksum valid: BGRT
+[t=221545us] <INFO> Skipping unhandled ACPI table: BGRT
+[t=222334us] <INFO> Loading 1 module(s)
+[t=222878us] <INFO>   [0] /boot/initramfs.tar (112640 bytes)
+[t=223713us] <INFO> initramfs: parsing tar headers
+[t=224416us] <INFO> initramfs: tar located at [0xFFFF800019CF8000 - 0xFFFF800019D13800]
+[t=225609us] <INFO> initramfs: tar header
+[t=226235us] <INFO>   addr = 0xFFFF800019CF8200
+[t=226887us] <INFO>   size = 0
+[t=227326us] <INFO>   blocks = 0
+[t=227779us] <INFO>   name = dev/
+[t=228277us] <INFO> initramfs: tar header
+[t=228854us] <INFO>   addr = 0xFFFF800019CF8400
+[t=229516us] <INFO>   size = 0
+[t=229940us] <INFO>   blocks = 0
+[t=230395us] <INFO>   name = dev/.gitkeep
+[t=230967us] <INFO> initramfs: tar header
+[t=231541us] <INFO>   addr = 0xFFFF800019CF8600
+[t=232196us] <INFO>   size = 0
+[t=232620us] <INFO>   blocks = 0
+[t=233125us] <INFO>   name = etc/
+[t=233595us] <INFO> initramfs: tar header
+[t=234243us] <INFO>   addr = 0xFFFF800019CF8800
+[t=234933us] <INFO>   size = 0
+[t=235359us] <INFO>   blocks = 0
+[t=235810us] <INFO>   name = etc/dir-a/
+[t=236359us] <INFO> initramfs: tar header
+[t=236930us] <INFO>   addr = 0xFFFF800019CF8A00
+[t=237589us] <INFO>   size = 0
+[t=238015us] <INFO>   blocks = 0
+[t=238476us] <INFO>   name = etc/dir-a/sub/
+[t=239077us] <INFO> initramfs: tar header
+[t=239648us] <INFO>   addr = 0xFFFF800019CF8C00
+[t=240327us] <INFO>   size = 0
+[t=240751us] <INFO>   blocks = 0
+[t=241205us] <INFO>   name = etc/dir-a/sub/thing/
+[t=241886us] <INFO> initramfs: tar header
+[t=242461us] <INFO>   addr = 0xFFFF800019CF8E00
+[t=243116us] <INFO>   size = 0
+[t=243541us] <INFO>   blocks = 0
+[t=243992us] <INFO>   name = etc/dir-a/sub/thing/file.txt
+[t=244784us] <INFO> initramfs: tar header
+[t=245358us] <INFO>   addr = 0xFFFF800019CF9000
+[t=246010us] <INFO>   size = 56
+[t=246479us] <INFO>   blocks = 1
+[t=246929us] <INFO>   name = etc/kernel.conf
+[t=247543us] <INFO> initramfs: tar header
+[t=248124us] <INFO>   addr = 0xFFFF800019CF9400
+[t=248775us] <INFO>   size = 0
+[t=249201us] <INFO>   blocks = 0
+[t=249652us] <INFO>   name = tmp/
+[t=250121us] <INFO> initramfs: tar header
+[t=250691us] <INFO>   addr = 0xFFFF800019CF9600
+[t=251345us] <INFO>   size = 0
+[t=251768us] <INFO>   blocks = 0
+[t=252247us] <INFO>   name = tmp/.gitkeep
+[t=252821us] <INFO> initramfs: tar header
+[t=253391us] <INFO>   addr = 0xFFFF800019CF9800
+[t=254050us] <INFO>   size = 0
+[t=254474us] <INFO>   blocks = 0
+[t=254928us] <INFO>   name = proc/
+[t=255413us] <INFO> initramfs: tar header
+[t=255984us] <INFO>   addr = 0xFFFF800019CF9A00
+[t=256637us] <INFO>   size = 0
+[t=257064us] <INFO>   blocks = 0
+[t=257519us] <INFO>   name = proc/.gitkeep
+[t=258132us] <INFO> initramfs: tar header
+[t=258700us] <INFO>   addr = 0xFFFF800019CF9C00
+[t=259358us] <INFO>   size = 0
+[t=259785us] <INFO>   blocks = 0
+[t=260239us] <INFO>   name = bin/
+[t=260708us] <INFO> initramfs: tar header
+[t=261280us] <INFO>   addr = 0xFFFF800019CF9E00
+[t=261928us] <INFO>   size = 23176
+[t=262407us] <INFO>   blocks = 46
+[t=262869us] <INFO>   name = bin/ls
+[t=263366us] <INFO> initramfs: tar header
+[t=263946us] <INFO>   addr = 0xFFFF800019CFFC00
+[t=264617us] <INFO>   size = 22128
+[t=265096us] <INFO>   blocks = 44
+[t=265562us] <INFO>   name = bin/musl
+[t=266085us] <INFO> initramfs: tar header
+[t=266659us] <INFO>   addr = 0xFFFF800019D05600
+[t=267310us] <INFO>   size = 52056
+[t=267785us] <INFO>   blocks = 102
+[t=268264us] <INFO>   name = bin/shell
+[t=268799us] <INFO> VFS: root mounted at /
+[t=269434us] <INFO> framebuffer: 1280x800 @ 32 bpp (pitch=5120)
+[t=270320us] <INFO> framebuffer: 1024000 total pixels
+[t=271058us] <INFO> framebuffer: VRAM @ [0xFFFF800080000000 - 0xFFFF8000803E8000] (4096000 bytes)
+[t=272383us] <INFO> framebuffer: VRAM back buffer @ [0xFFFF808000011008 - 0xFFFF8080003F9008]
+[t=273655us] <INFO> PIC: disabled
+[t=274133us] <INFO> APIC: TSC deadline mode @ 1000hz, 1 ms, 4492369 ticks
+[t=275338us] <DEBUG> IOAPIC: writing value 0x0021 to register 18
+[t=276247us] <DEBUG> IOAPIC: writing value 0x0000 to register 19
+[t=277132us] <INFO> keyboard: PS/2 keyboard initialized
+[t=277887us] <INFO> GDT: TSS kernel_stack @ [0xFFFFFFFF80065000 - 0xFFFFFFFF80069000]
+[t=279055us] <INFO> GDT: created with 6 entries
+[t=279706us] <INFO> GDT: limit = 0x0037
+[t=280254us] <INFO> GDT: base = 0xFFFFFFFF80069080
+[t=280948us] <INFO> GDT[0]: NULL [base (0x0000,0x0000,0x0000) limit (0x0000,0x0000) flags (0b0000) access (0x0000)]
+[t=282528us] <INFO> GDT[1]: Kernel Code [base (0x0000,0x0000,0x0000) limit (0xFFFF,0x000F) flags (0b1010) access (0x009B)]
+[t=284187us] <INFO> GDT[2]: Kernel Data [base (0x0000,0x0000,0x0000) limit (0xFFFF,0x000F) flags (0b1010) access (0x0093)]
+[t=285847us] <INFO> GDT[3]: User Data [base (0x0000,0x0000,0x0000) limit (0xFFFF,0x000F) flags (0b1010) access (0x00F2)]
+[t=287471us] <INFO> GDT[4]: User Code [base (0x0000,0x0000,0x0000) limit (0xFFFF,0x000F) flags (0b1010) access (0x00FA)]
+[t=289127us] <INFO> IDT: idtr.base @ 0xFFFFFFFF800690D0
+[t=289885us] <INFO> IDT: idtr.limit = 4095
+[t=290476us] <INFO> CPU: AMD detected, enabled LFENCE dispatch-serialization (Spectre v1 mitigation, DE_CFG bit 1)
+[t=292029us] <INFO> syscall: LSTAR  @ 0xFFFFFFFF80007F26
+[t=292796us] <INFO> syscall: STAR   = 0x0013000800000000
+[t=293570us] <INFO> syscall: SFMASK = 0b011100000000
+[t=294315us] <INFO> syscall: EFER   = 0b110100000001
+[t=295037us] <INFO> percpu: GS_BASE = 0xFFFF80800000F068
+[t=295811us] <INFO> console: 160x50 characters
+[t=296450us] <INFO> console: font 8x16 pixels
+[t=297080us] <INFO> console: cursor set to (0, 0)
+[t=297763us] <INFO> gfx: initialized
+[t=298272us] <INFO> ======================================
+[t=299068us] <INFO>          Running Kernel Tests         
+[t=299867us] <INFO> ======================================
+[t=300687us] <INFO> Running PMM tests...
+[t=301245us] <INFO> Running VMM tests...
+[t=301810us] <INFO> Running slab tests...
+[t=302386us] <INFO> Running kmalloc tests...
+[t=302999us] <WARN> kmalloc(0) returns NULL
+[t=303598us] <INFO> Running kvector tests...
+[t=304257us] <INFO> Running klist tests...
+[t=304856us] <INFO> Running kmin_heap tests...
+[t=305505us] <INFO> Running kmax_heap tests...
+[t=306179us] <INFO> Running kstring tests...
+[t=306804us] <INFO> Running kstring_view tests...
+[t=307485us] <INFO> Running kunique_ptr tests...
+[t=308154us] <INFO> Running kshared_ptr tests...
+[t=308822us] <INFO> Running katomic tests...
+[t=309433us] <INFO> Running kspinlock tests...
+[t=310071us] <INFO> Running kspinlock_irqsave tests...
+[t=310813us] <INFO> Running fmt tests...
+[t=311373us] <INFO> Running algo tests...
+[t=311947us] <INFO> Running filesystem tests...
+[t=312633us] <WARN> tmpfs::lseek() invalid whence=99
+[t=313364us] <INFO> Running round robin scheduler tests...
+[t=314166us] <INFO> ======================================
+[t=314966us] <INFO>          Kernel Test Results          
+[t=315768us] <INFO> ======================================
+[t=316567us] <INFO> * PMM free frames before test: 657517
+[t=317350us] <INFO> * PMM free frames after test:  657514
+[t=318153us] <INFO> * Slab count before test: 6
+[t=318800us] <INFO> * Slab count after test:  9
+[t=319450us] <INFO> * Tests Passed: 848/848
+[t=320054us] <INFO> * Tests Failed: 0/848
+[t=320625us] <INFO> * All tests passed!
+[t=321174us] <INFO> ======================================
+[t=329445us] <DEBUG> hello from kt1
+[t=329929us] <DEBUG> [KT1] waiting...
+[t=330467us] <DEBUG> kmutex checking on pid=7
+[t=331083us] <DEBUG> kmutex AQUIRE on pid=7
+[t=331680us] <DEBUG> [KT1] aquired lock
+[t=332221us] <DEBUG> hello from kt2
+[t=332716us] <DEBUG> [KT2] waiting...
+[t=333234us] <DEBUG> kmutex checking on pid=8
+[t=333871us] <DEBUG> hello from kt3
+[t=334371us] <DEBUG> [KT3] waiting...
+[t=334900us] <DEBUG> kmutex checking on pid=9
+[t=432228us] <DEBUG> [KT1] released lock
+[t=432819us] <DEBUG> woke 2 mutex waiters
+[t=434962us] <DEBUG> kmutex checking on pid=8
+[t=435572us] <DEBUG> kmutex AQUIRE on pid=8
+[t=436183us] <DEBUG> [KT2] aquired lock
+[t=436733us] <DEBUG> kmutex checking on pid=9
+[t=936739us] <DEBUG> [KT2] released lock
+[t=938228us] <DEBUG> woke 1 mutex waiters
+[t=938948us] <DEBUG> kmutex checking on pid=9
+[t=939583us] <DEBUG> kmutex AQUIRE on pid=9
+[t=940194us] <DEBUG> [KT3] aquired lock
+[t=1328406us] <INFO> ========================================
+[t=1329458us] <INFO> Terminating process 7
+[t=1330042us] <INFO> ========================================
+[t=1331008us] <WARN> Attempt to unmap virt addr that is not mapped: 0xFFFF808000443000
+[t=1332251us] <WARN> Attempt to unmap virt addr that is not mapped: 0xFFFF808000444000
+[t=1333432us] <WARN> Attempt to unmap virt addr that is not mapped: 0xFFFF808000445000
+[t=1334641us] <WARN> Attempt to unmap virt addr that is not mapped: 0xFFFF808000446000
+[t=1335858us] <WARN> Attempt to unmap virt addr that is not mapped: 0xFFFF808000447000
+[t=1337057us] <INFO> PMM frames: 657499 -> 657500 (+1)
+[t=1337815us] <INFO> Slabs: 9 -> 9
+[t=1338333us] <INFO> ========================================
+[t=1339181us] <INFO> ========================================
+[t=1340031us] <INFO> Terminating process 8
+[t=1340621us] <INFO> ========================================
+[t=1341481us] <WARN> Attempt to unmap virt addr that is not mapped: 0xFFFF808000448000
+[t=1342662us] <WARN> Attempt to unmap virt addr that is not mapped: 0xFFFF808000449000
+[t=1343847us] <WARN> Attempt to unmap virt addr that is not mapped: 0xFFFF80800044A000
+[t=1345059us] <WARN> Attempt to unmap virt addr that is not mapped: 0xFFFF80800044B000
+[t=1346251us] <WARN> Attempt to unmap virt addr that is not mapped: 0xFFFF80800044C000
+[t=1347431us] <INFO> PMM frames: 657500 -> 657501 (+1)
+[t=1348183us] <INFO> Slabs: 9 -> 9
+[t=1348663us] <INFO> ========================================
+[2J[001;001H[=3h[2J[001;001H[2J[001;001H[8;056;240t[2J[001;001H[2J[001;001H[=3h[2J[001;001H[2J[001;001H[8;042;160t[2J[001;001H

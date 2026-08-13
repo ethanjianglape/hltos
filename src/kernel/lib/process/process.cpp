@@ -30,18 +30,23 @@ constexpr std::uintptr_t DEFAULT_MMAP_MIN_ADDR = 65536;
 
 static katomic<int> g_pid{1};
 
-extern "C" void userspace_entry_trampoline();
+// extern "C" void userspace_entry_trampoline();
+
+extern "C" void userspace_entry_context_switch(std::uintptr_t rsp, std::uintptr_t rip);
+
+extern "C" void userspace_entry_trampoline2()
+{
+    auto* proc = arch::percpu::current_process();
+    std::uintptr_t rsp = proc->user_rsp;
+    std::uintptr_t rip = proc->entry;
+
+    userspace_entry_context_switch(rsp, rip);
+}
 
 extern "C" void forked_entry_trampoline();
 
-static void kthread_entry_trampoline()
+extern "C" void kthread_entry_trampoline()
 {
-    // context_switch()'s `ret` never touches rflags — IF here is whatever
-    // it was at the call site that dispatched us (e.g. 0 if reached from
-    // inside the timer ISR). userspace_entry_trampoline gets this for free
-    // via its own iretq; we don't have one, so set it explicitly.
-    arch::cpu::sti();
-
     auto* proc = arch::percpu::current_process();
     auto* entry_func = reinterpret_cast<void (*)()>(proc->entry);
 
@@ -63,37 +68,51 @@ void Process::log() const
     log::debugf("* k rsp saved   @ {}", fmt::hex{kernel_rsp_saved});
 }
 
-KThread::KThread(void (*func)())
+Process::Process()
 {
     pid = g_pid++;
-    parent = nullptr;
+    exit_status = 0;
     state = ProcessState::NEW;
     wait_reason = WaitReason::NONE;
-    exit_status = 0;
+    mmap_min_addr = DEFAULT_MMAP_MIN_ADDR;
     heap_break = 0;
-    pml4 = arch::vmm::get_kernel_pml4();
-    fd_table = {};
-    kernel_stack = new std::uint8_t[KERNEL_STACK_SIZE];
-    kernel_rsp = reinterpret_cast<std::uintptr_t>(kernel_stack + KERNEL_STACK_SIZE);
     total_sleep_ns = 0;
     sleep_start_ns = 0;
+    quantum_start_ns = 0;
     wake_time_ns = 0;
-    mmap_min_addr = DEFAULT_MMAP_MIN_ADDR;
     fs_base = 0;
     tidptr = 0;
-    cwd_inode = nullptr;
-    entry = reinterpret_cast<std::uintptr_t>(func);
 
-    context_frame = reinterpret_cast<arch::context::ContextFrame*>(kernel_rsp - sizeof(arch::context::ContextFrame));
-    context_frame->r15 = 0x15151515; // Magic numbers to help with debugging
+    kernel_stack = new std::uint8_t[KERNEL_STACK_SIZE];
+    kernel_rsp = reinterpret_cast<std::uintptr_t>(kernel_stack + KERNEL_STACK_SIZE);
+    fd_table = {};
+    cwd_inode = nullptr;
+}
+
+void Process::build_context_frame(void (*entry)())
+{
+    // Magic numbers to help with debugging
+    context_frame->r15 = 0x15151515;
     context_frame->r14 = 0x14141414;
     context_frame->r13 = 0x13131313;
     context_frame->r12 = 0x12121212;
     context_frame->rbp = 0x77777777;
     context_frame->rbx = 0x12345678;
-    context_frame->rip = reinterpret_cast<std::uintptr_t>(kthread_entry_trampoline);
+    context_frame->rip = reinterpret_cast<std::uintptr_t>(entry);
+}
 
+KThread::KThread(void (*func)())
+    : Process{}
+{
+    kassert_not_null(func);
+
+    parent = nullptr;
+    pml4 = arch::vmm::get_kernel_pml4();
+    entry = reinterpret_cast<std::uintptr_t>(func);
+    context_frame = reinterpret_cast<arch::context::ContextFrame*>(kernel_rsp - sizeof(arch::context::ContextFrame));
     kernel_rsp_saved = reinterpret_cast<std::uintptr_t>(context_frame);
+
+    build_context_frame(kthread_entry_trampoline);
 }
 
 void Process::exec_elf64(std::uint8_t* buffer, std::size_t size, char* const argv[], char* const envp[])
@@ -192,7 +211,7 @@ void Process::exec_elf64(std::uint8_t* buffer, std::size_t size, char* const arg
     context_frame->r12 = 0xABABABAB;
     context_frame->rbp = 0x77777777;
     context_frame->rbx = 0x12345678;
-    context_frame->rip = reinterpret_cast<std::uintptr_t>(userspace_entry_trampoline);
+    context_frame->rip = reinterpret_cast<std::uintptr_t>(userspace_entry_trampoline2);
     kernel_rsp_saved = reinterpret_cast<std::uintptr_t>(context_frame);
 
     log();
@@ -202,6 +221,7 @@ void Process::exec_elf64(std::uint8_t* buffer, std::size_t size, char* const arg
 }
 
 ELF64Process::ELF64Process(std::uint8_t* buffer, std::size_t size)
+    : Process{}
 {
     elf::Elf64_File file = elf::parse_file(buffer, size);
 
@@ -213,22 +233,9 @@ ELF64Process::ELF64Process(std::uint8_t* buffer, std::size_t size)
     arch::vmm::switch_pml4(pml4);
     arch::cpu::stac();
 
-    pid = g_pid++;
-    state = ProcessState::NEW;
-    wait_reason = WaitReason::NONE;
-    exit_status = 0;
-    heap_break = 0;
     this->pml4 = pml4;
-    fd_table = {};
     kernel_stack = new std::uint8_t[KERNEL_STACK_SIZE];
     kernel_rsp = reinterpret_cast<std::uintptr_t>(kernel_stack + KERNEL_STACK_SIZE);
-    total_sleep_ns = 0;
-    sleep_start_ns = 0;
-    wake_time_ns = 0;
-    mmap_min_addr = DEFAULT_MMAP_MIN_ADDR;
-    fs_base = 0;
-    tidptr = 0;
-    cwd_inode = nullptr;
     uheap = arch::vmm::create_user_heap(pml4);
 
     for (const elf::Elf64_ProgramHeader& header : file.program_headers) {
@@ -268,14 +275,20 @@ ELF64Process::ELF64Process(std::uint8_t* buffer, std::size_t size)
     *(--stack) = 0; // argv terminator (NULL)
     *(--stack) = 0; // argc = 0
 
+    user_rsp = reinterpret_cast<std::uintptr_t>(stack);
+    entry = file.entry;
+
     context_frame = reinterpret_cast<arch::context::ContextFrame*>(kernel_rsp - sizeof(arch::context::ContextFrame));
-    context_frame->r15 = file.entry;
-    context_frame->r14 = reinterpret_cast<std::uintptr_t>(stack);
-    context_frame->r13 = 0xDEADBEEF; // Magic numbers to help with debugging
-    context_frame->r12 = 0xABABABAB;
-    context_frame->rbp = 0x77777777;
-    context_frame->rbx = 0x12345678;
-    context_frame->rip = reinterpret_cast<std::uintptr_t>(userspace_entry_trampoline);
+
+    build_context_frame(userspace_entry_trampoline2);
+
+    // context_frame->r15 = file.entry;
+    // context_frame->r14 = reinterpret_cast<std::uintptr_t>(stack);
+    // context_frame->r13 = 0xDEADBEEF; // Magic numbers to help with debugging
+    // context_frame->r12 = 0xABABABAB;
+    // context_frame->rbp = 0x77777777;
+    // context_frame->rbx = 0x12345678;
+    // context_frame->rip = reinterpret_cast<std::uintptr_t>(userspace_entry_trampoline);
     kernel_rsp_saved = reinterpret_cast<std::uintptr_t>(context_frame);
 
     fs::FileDescriptor* stdin = fs::open("/dev/tty1", fs::O_RDONLY);
@@ -365,14 +378,9 @@ Process* Process::fork(arch::trap::SyscallFrame* parent_frame)
 
     forked->context_frame = reinterpret_cast<arch::context::ContextFrame*>(
         forked->kernel_rsp - sizeof(arch::trap::SyscallFrame) - sizeof(arch::context::ContextFrame));
-    forked->context_frame->r15 = 0x15151515; // Magic numbers to help with debugging
-    forked->context_frame->r14 = 0x14141414;
-    forked->context_frame->r13 = 0x13131313;
-    forked->context_frame->r12 = 0x12121212;
-    forked->context_frame->rbp = 0xA000000A;
-    forked->context_frame->rbx = 0xB000000B;
-    forked->context_frame->rip = reinterpret_cast<std::uintptr_t>(forked_entry_trampoline);
     forked->kernel_rsp_saved = reinterpret_cast<std::uintptr_t>(forked->context_frame);
+
+    build_context_frame(forked_entry_trampoline);
 
     fs::FileDescriptor* stdin = fs::open("/dev/tty1", fs::O_RDONLY);
     fs::FileDescriptor* stdout = fs::open("/dev/tty1", fs::O_WRONLY);
@@ -469,11 +477,17 @@ bool Process::is_waiting_for_child(int pid) const
     return is_waiting_for(WaitReason::CHILD_PROCESS) && (wait_pid == pid || wait_pid == -1);
 }
 
+bool Process::is_waiting_for_mutex(kmutex* mutex) const
+{
+    return is_waiting_for(WaitReason::MUTEX) && wait_mutex != nullptr && wait_mutex == mutex;
+}
+
 void Process::wake()
 {
     state = ProcessState::READY;
     wait_reason = WaitReason::NONE;
     wait_pid = -1;
+    wait_mutex = nullptr;
     total_sleep_ns = clock::get_time_ns() - sleep_start_ns;
     wake_time_ns = 0;
     sleep_start_ns = 0;
@@ -492,6 +506,7 @@ void Process::resume()
     state = ProcessState::RUNNING;
     wait_reason = WaitReason::NONE;
     wait_pid = -1;
+    wait_mutex = nullptr;
     wake_time_ns = 0;
     sleep_start_ns = 0;
     quantum_start_ns = clock::get_time_ns();
@@ -524,6 +539,12 @@ void Process::wait_for_child(int child_pid)
     wait_pid = child_pid;
 }
 
+void Process::wait_for_mutex(kmutex* mutex)
+{
+    wait_for(WaitReason::MUTEX);
+    wait_mutex = mutex;
+}
+
 void Process::sleep_for(std::uint64_t duration_ns)
 {
     wait_for(WaitReason::SLEEP);
@@ -533,12 +554,11 @@ void Process::sleep_for(std::uint64_t duration_ns)
 
 void Process::terminate()
 {
-    log::info("========================================");
-    log::info("Terminating process ", pid);
-    log::info("========================================");
+    log::debugf("========================================");
+    log::debugf("Terminating process pid={}", pid);
 
-    const auto frames_before = pmm::get_free_frames();
-    const auto slabs_before = slab::total_slabs();
+    const std::size_t frames_before = pmm::get_free_frames();
+    const std::size_t slabs_before = slab::total_slabs();
 
     for (fs::FileDescriptor* fd : fd_table) {
         fd->inode->close(fd);
@@ -547,13 +567,13 @@ void Process::terminate()
     arch::vmm::free_user_pml4(pml4);
     delete[] kernel_stack;
 
-    const auto frames_after = pmm::get_free_frames();
-    const auto slabs_after = slab::total_slabs();
-    const auto frames_diff = frames_after - frames_before;
+    const std::size_t frames_after = pmm::get_free_frames();
+    const std::size_t slabs_after = slab::total_slabs();
+    const std::size_t frames_diff = frames_after - frames_before;
 
-    log::infof("PMM frames: {} -> {} (+{})", frames_before, frames_after, frames_diff);
-    log::infof("Slabs: {} -> {}", slabs_before, slabs_after);
-    log::infof("========================================");
+    log::debugf("PMM frames: {} -> {} (+{})", frames_before, frames_after, frames_diff);
+    log::debugf("Slabs: {} -> {}", slabs_before, slabs_after);
+    log::debugf("========================================");
 }
 
 Process::~Process()

@@ -230,9 +230,7 @@ gfx_render_kthread()
 
 static void gfx_tick_kthread()
 {
-    constexpr float target_fps = 100;
-    constexpr float ms_per_frame = 1000 / target_fps;
-    constexpr int us_per_frame = ms_per_frame * 1000;
+    constexpr float target_fps = 60;
 
     while (true) {
         player->move();
@@ -249,7 +247,7 @@ static void gfx_tick_kthread()
 
         text.str = fmt::sprintf("player at ({}, {})", player->x, player->y);
 
-        scheduler::mechanism::yield_sleep_us(us_per_frame);
+        scheduler::mechanism::yield_sleep_hz(target_fps);
     }
 }
 

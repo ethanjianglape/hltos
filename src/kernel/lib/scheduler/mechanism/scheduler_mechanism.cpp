@@ -21,9 +21,6 @@ static kspinlock_irqsave g_processes_lock;
 static klist<process::Process*> g_processes;
 static kmin_heap<std::uint64_t, process::Process*> g_sleepers;
 
-static katomic<std::uint64_t> g_preempt_skips;
-static katomic<std::uint64_t> g_preempts;
-
 /// @brief switch execution from one process to another
 ///
 /// @param old_rsp_ptr pointer to the rsp of the previous process
@@ -288,20 +285,6 @@ static void reaper_kthread()
     kpanic("reaper_kthread terminated");
 }
 
-[[noreturn]]
-static void debug_kthread()
-{
-    static constexpr std::uint64_t DEBUG_INTERVAL_MS = 2000;
-
-    while (true) {
-        log::debugf("preempts {}, skipped = {}", g_preempts.load(), g_preempt_skips.load());
-
-        yield_sleep_ms(DEBUG_INTERVAL_MS);
-    }
-
-    kpanic("scheduler: debug_kthread terminated");
-}
-
 /// @brief wake any due sleepers, then ask the policy which process runs next
 ///
 static process::Process* pick_next_process()
@@ -336,7 +319,6 @@ static void preempt()
         std::uint64_t runtime_ns = clock::get_time_ns() - current->quantum_start_ns;
 
         if (!g_scheduler_policy->should_preempt(current, runtime_ns)) {
-            g_preempt_skips += 1;
             return;
         }
     }
@@ -365,8 +347,6 @@ static void preempt()
         return;
     }
 
-    g_preempts += 1;
-
     current->pause();
     enqueue_if_runnable(current);
     activate_process(next);
@@ -378,6 +358,7 @@ static void preempt()
 ///
 /// @return this function should never return
 ///
+[[noreturn]]
 void yield_dead()
 {
     arch::cpu::cli();
@@ -478,9 +459,9 @@ void yield_sleep_hz(std::uint64_t hz)
 {
     kassert(hz > 0);
 
-    const std::uint64_t sleep_time_ms = 1000 / hz;
+    const std::uint64_t sleep_time_ns = 1000000000 / hz;
 
-    yield_sleep_ms(sleep_time_ms);
+    yield_sleep_ns(sleep_time_ns);
 }
 
 /// @brief put the current process to sleep for a specified millisecond value
@@ -514,6 +495,44 @@ void yield_sleep_ns(std::uint64_t duration_ns)
     process::Process* current = arch::percpu::current_process();
     current->sleep_for(duration_ns);
     yield_blocked(process::WaitReason::SLEEP);
+}
+
+/// @brief wake all processes that are waiting for this mutex
+///
+void wake_mutex(kmutex* mutex)
+{
+    kassert_not_null(mutex);
+
+    g_processes_lock.lock();
+
+    for (std::size_t i = 0; i < g_processes.size(); i++) {
+        process::Process* p = g_processes[i];
+
+        kassert_not_null(p);
+
+        if (!p->is_blocked()) {
+            continue;
+        }
+
+        if (!p->is_waiting_for_mutex(mutex)) {
+            continue;
+        }
+
+        p->wake();
+        g_scheduler_policy->enqueue(p);
+    }
+
+    g_processes_lock.unlock();
+}
+
+/// @brief block the current process on a mutex
+///
+void yield_mutex(kmutex* mutex)
+{
+    kassert_not_null(mutex);
+    process::Process* current = arch::percpu::current_process();
+    current->wait_for_mutex(mutex);
+    yield_blocked(process::WaitReason::MUTEX);
 }
 
 /// @brief block the current process and schedule a new one
@@ -609,7 +628,6 @@ void init(policy::SchedulerPolicy* scheduler_policy)
     g_scheduler_policy->init();
 
     add_process(new process::KThread(reaper_kthread));
-    add_process(new process::KThread(debug_kthread));
 }
 
 }

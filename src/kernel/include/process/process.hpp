@@ -2,6 +2,7 @@
 
 #include <arch.hpp>
 #include <containers/kvector.hpp>
+#include <exclusive/kmutex.hpp>
 #include <fs/fs.hpp>
 
 #include <cstddef>
@@ -24,12 +25,16 @@ enum class WaitReason : std::uint8_t {
     KEYBOARD = 1,
     SLEEP = 2,
     FRAMEBUFFER = 3,
-    CHILD_PROCESS = 4
+    CHILD_PROCESS = 4,
+    MUTEX = 5
 };
 
 struct Process {
 private:
     void terminate();
+
+protected:
+    void build_context_frame(void (*entry)());
 
 public:
     // Process meta info
@@ -48,6 +53,8 @@ public:
 
     fs::Inode* cwd_inode;
 
+    kmutex* wait_mutex;
+
     // Address space
     arch::vmm::PML4E* pml4;
     std::uintptr_t heap_break;
@@ -58,6 +65,7 @@ public:
     std::uint8_t* kernel_stack;      // Base of kernel stack
     std::uintptr_t kernel_rsp;       // Top of stack (initially)
     std::uintptr_t kernel_rsp_saved; // Kernel rsp used during context_switch
+    std::uintptr_t user_rsp;
 
     arch::context::ContextFrame* context_frame;
     arch::trap::SyscallFrame* syscall_frame;
@@ -69,7 +77,7 @@ public:
     std::uint64_t fs_base; // For thread local storage (TLS)
     int* tidptr;
 
-    Process() = default;
+    Process();
     virtual ~Process();
 
     Process(const Process&) = delete;
@@ -91,6 +99,7 @@ public:
     bool is_blocked() const;
     bool is_waiting_for(WaitReason reason) const;
     bool is_waiting_for_child(int pid) const;
+    bool is_waiting_for_mutex(kmutex* mutex) const;
 
     void log() const;
     void log_syscall_frame() const;
@@ -102,6 +111,7 @@ public:
     void zombify();
     void wait_for(WaitReason reason);
     void wait_for_child(int child_pid);
+    void wait_for_mutex(kmutex* mutex);
     void sleep_for(std::uint64_t duration_ns);
 
     void exec_elf64(std::uint8_t* buffer, std::size_t size, char* const argv[], char* const envp[]);

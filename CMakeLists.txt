@@ -20,7 +20,7 @@ set(CMAKE_ASM_COMPILE_OBJECT "<CMAKE_ASM_COMPILER> <INCLUDES> <FLAGS> -o <OBJECT
 # Kernel compile flags
 add_compile_options(
   $<$<COMPILE_LANGUAGE:C,CXX>:-m64>
-  $<$<COMPILE_LANGUAGE:C,CXX>:-march=native>
+  $<$<COMPILE_LANGUAGE:C,CXX>:-march=x86-64-v2>
   $<$<COMPILE_LANGUAGE:C,CXX>:-mcmodel=kernel>
   $<$<COMPILE_LANGUAGE:C,CXX>:-mabi=sysv>
   $<$<COMPILE_LANGUAGE:C,CXX>:-mno-red-zone>
@@ -34,7 +34,7 @@ add_compile_options(
   $<$<COMPILE_LANGUAGE:C,CXX>:-Wall>
   $<$<COMPILE_LANGUAGE:C,CXX>:-Wextra>
   $<$<COMPILE_LANGUAGE:C,CXX>:-g>
-  $<$<COMPILE_LANGUAGE:C,CXX>:-O1>
+  $<$<COMPILE_LANGUAGE:C,CXX>:-O0>
 )
 
 # C++ specific flags

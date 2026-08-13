@@ -1,8 +1,9 @@
 #pragma once
 
 #include <containers/klist.hpp>
-#include <cstdint>
 #include <process/process.hpp>
+
+#include <cstdint>
 
 namespace scheduler::policy {
 
@@ -23,11 +24,10 @@ public:
     /// @brief mark a process as ready to run
     virtual void enqueue(process::Process* p) = 0;
 
-    /// @brief determine if the running process should be preempted
-    virtual bool should_preempt(process::Process* p, std::uint64_t runtime_ns);
+    /// @brief determine if a process should be preempted
+    virtual bool should_preempt(process::Process* p, std::uint64_t runtime_ns) = 0;
 
-    /// @brief choose and remove the next ready process to run, or nullptr
-    /// if nothing is ready (mechanism falls back to the idle process)
+    /// @brief choose the next ready process to run, or nullptr if nothing is ready
     virtual process::Process* pick_next() = 0;
 };
 
