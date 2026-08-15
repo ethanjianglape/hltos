@@ -193,6 +193,10 @@ static const char* syscall_name(std::uint64_t syscall_num)
  */
 extern "C" std::uint64_t syscall_dispatcher(x64::trap::SyscallFrame* frame)
 {
+    auto* proc = x64::percpu::current_process();
+
+    proc->syscall_frame = frame;
+
     const std::uint64_t syscall_num = frame->rax;
     const std::uint64_t arg1 = frame->rdi;
     const std::uint64_t arg2 = frame->rsi;
@@ -261,7 +265,7 @@ extern "C" std::uint64_t syscall_dispatcher(x64::trap::SyscallFrame* frame)
     case linux::SYS_GETDENTS64:
         return syscall::sys_getdents64(arg1, reinterpret_cast<void*>(arg2), arg3);
     case linux::SYS_FORK:
-        return syscall::sys_fork(frame);
+        return syscall::sys_fork();
     case linux::SYS_VFORK:
         return syscall::sys_vfork();
     case linux::SYS_WAIT4:

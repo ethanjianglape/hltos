@@ -17,16 +17,14 @@ int sys_getpid()
     return proc->pid;
 }
 
-int sys_fork(arch::trap::SyscallFrame* syscall_frame)
+int sys_fork()
 {
     process::Process* current = arch::percpu::current_process();
-    process::Process* created = current->fork(syscall_frame);
+    process::Process* forked = current->fork();
 
-    kassert_not_null(created);
+    scheduler::mechanism::add_process(forked);
 
-    scheduler::mechanism::add_process(created);
-
-    return created->pid;
+    return forked->pid;
 }
 
 int sys_execve(const char* path, char* argv[], char* envp[])

@@ -57,7 +57,6 @@ void cmd_ls(char* path)
     int pid = fork();
 
     if (pid == 0) {
-        printf("child path = %s", path);
         char* argv[] = {"ls", path, NULL};
         execve("/bin/ls", argv, NULL);
     } else {

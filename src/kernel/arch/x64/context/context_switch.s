@@ -174,21 +174,6 @@ permanent_context_switch:
 #   garbage. The symptom is usually a page fault at a low address (like 0x10)
 #   when trying to save RSP to per-CPU data.
 
-.global userspace_entry_trampoline
-userspace_entry_trampoline:
-    cli                     # Disable interrupts while building iretq frame
-    swapgs                  # Restore user GS before returning to userspace
-
-    # Build the iretq frame that will take us to userspace
-    # Stack must contain (in push order): SS, RSP, RFLAGS, CS, RIP
-    push $0x1B              # SS = user data segment (GDT index 3, RPL 3)
-    push %r14               # RSP = user stack (passed via ContextFrame)
-    push $0x202             # RFLAGS = IF set (interrupts enabled)
-    push $0x23              # CS = user code segment (GDT index 4, RPL 3)
-    push %r15               # RIP = user entry point (passed via ContextFrame)
-
-    iretq                   # Pop all five values and jump to userspace
-
 .global userspace_entry_context_switch
 userspace_entry_context_switch:
     cli                     # Disable interrupts while building iretq frame
@@ -204,7 +189,7 @@ userspace_entry_context_switch:
 
     iretq                   # Pop all five values and jump to userspace    
 
-.global forked_entry_trampoline
-forked_entry_trampoline:
+.global forked_entry_context_switch
+forked_entry_context_switch:
     mov $0, %rax
     jmp syscall_exit

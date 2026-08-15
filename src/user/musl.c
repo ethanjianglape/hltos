@@ -3,7 +3,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-int main(void)
+int main(int argc, char* argv[])
 {
     /* int pid = fork(); */
 
@@ -21,6 +21,7 @@ int main(void)
     /* } */
 
     puts("hello from musl.c!");
+    printf("argc = %d\n", argc);
 
     return 0;
 

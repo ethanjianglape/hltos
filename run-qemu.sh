@@ -13,4 +13,5 @@ else
     exit 1
 fi
 
-qemu-system-x86_64 -accel kvm -cpu host,+invtsc,migratable=no -bios ${BIOS} -serial stdio -m 512M -cdrom hltos.iso
+# the +invtsc flag is what gives us the invariant TSC
+qemu-system-x86_64 -accel kvm -cpu host,+invtsc,migratable=no -bios ${BIOS} -serial stdio -m 256M -cdrom hltos.iso

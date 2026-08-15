@@ -2,9 +2,21 @@
 #include <stdio.h>
 #include <unistd.h>
 
-int main(int argc, char** argv)
+int main(int argc, char* argv[])
 {
-    DIR* dir = opendir("./");
+    printf("ls: argc = %d\n", argc);
+
+    for (int i = 0; i < argc; i++) {
+        printf("ls: argv[%d] = %s\n", i, argv[i]);
+    }
+
+    char* path = "./";
+
+    if (argc > 1) {
+        path = argv[1];
+    }
+
+    DIR* dir = opendir(path);
 
     struct dirent* entry;
 

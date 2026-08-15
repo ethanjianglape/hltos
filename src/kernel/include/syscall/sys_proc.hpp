@@ -6,7 +6,7 @@ namespace syscall {
 
 int sys_getpid();
 
-int sys_fork(arch::trap::SyscallFrame* syscall_frame);
+int sys_fork();
 
 int sys_vfork();
 

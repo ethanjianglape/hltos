@@ -8,6 +8,9 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "arch/x64/trap/syscall_entry.hpp"
+#include "elf.hpp"
+
 namespace process {
 
 enum class ProcessState : std::uint8_t {
@@ -34,7 +37,9 @@ private:
     void terminate();
 
 protected:
-    void build_context_frame(void (*entry)());
+    void build_synthetic_context_frame(void (*entry)());
+    void copy_syscall_frame(arch::trap::SyscallFrame* frame);
+    void map_elf64_header(std::uint8_t* file_buffer, const elf::Elf64_ProgramHeader& header);
 
 public:
     // Process meta info
@@ -47,8 +52,6 @@ public:
     std::uint64_t context_switches;
 
     std::uint64_t wake_time_ns;
-    std::uint64_t total_sleep_ns;
-    std::uint64_t sleep_start_ns;
     std::uint64_t quantum_start_ns;
 
     fs::Inode* cwd_inode;
@@ -58,7 +61,6 @@ public:
     // Address space
     arch::vmm::PML4E* pml4;
     std::uintptr_t heap_break;
-    std::uintptr_t mmap_min_addr;
 
     arch::vmm::Heap uheap;
 
@@ -86,7 +88,7 @@ public:
     Process& operator=(const Process&) = delete;
     Process& operator=(Process&&) = delete;
 
-    Process* fork(arch::trap::SyscallFrame* parent_frame);
+    Process* fork();
 
     const char* get_state_str() const;
 
@@ -104,6 +106,8 @@ public:
     void log() const;
     void log_syscall_frame() const;
 
+    void build_stdio();
+
     void wake();
     void pause();
     void resume();
@@ -120,11 +124,6 @@ public:
 struct KThread final : public Process {
 public:
     KThread(void (*func)());
-};
-
-struct ELF64Process final : public Process {
-public:
-    ELF64Process(std::uint8_t* buffer, std::size_t size);
 };
 
 }

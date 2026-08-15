@@ -412,7 +412,6 @@ void map_pages(PML4E* pml4, std::uintptr_t virt_addr, std::size_t bytes, int fla
 
 void map_user_pages(PML4E* pml4, std::uintptr_t virt, std::size_t bytes)
 {
-
     map_pages(pml4, virt, bytes, PAGE_USER | PAGE_WRITE);
 }
 
