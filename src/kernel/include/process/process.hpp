@@ -40,6 +40,7 @@ protected:
     void build_synthetic_context_frame(void (*entry)());
     void copy_syscall_frame(arch::trap::SyscallFrame* frame);
     void map_elf64_header(std::uint8_t* file_buffer, const elf::Elf64_ProgramHeader& header);
+    void build_user_stack(const kvector<kstring>& argv_strs, const kvector<kstring>& envp_strs);
 
 public:
     // Process meta info
@@ -118,7 +119,8 @@ public:
     void wait_for_mutex(kmutex* mutex);
     void sleep_for(std::uint64_t duration_ns);
 
-    void exec_elf64(std::uint8_t* buffer, std::size_t size, char* const argv[], char* const envp[]);
+    void exec_elf64(std::uint8_t* buffer, std::size_t size, kvector<kstring>& argv_strs, kvector<kstring>& envp_strs);
+    // void exec_elf64(std::uint8_t* buffer, std::size_t size, char* const argv[], char* const envp[]);
 };
 
 struct KThread final : public Process {

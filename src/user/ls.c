@@ -4,12 +4,6 @@
 
 int main(int argc, char* argv[])
 {
-    printf("ls: argc = %d\n", argc);
-
-    for (int i = 0; i < argc; i++) {
-        printf("ls: argv[%d] = %s\n", i, argv[i]);
-    }
-
     char* path = "./";
 
     if (argc > 1) {

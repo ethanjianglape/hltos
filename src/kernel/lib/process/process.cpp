@@ -20,10 +20,10 @@
 namespace process {
 
 constexpr std::uintptr_t USER_STACK_BASE = 0x00800000;
-constexpr std::uintptr_t USER_STACK_SIZE = 16 * 1024;   // 16KiB
+constexpr std::uintptr_t USER_STACK_SIZE = 32 * 1024;   // 32KiB
 constexpr std::uintptr_t USER_STACK_TOP = USER_STACK_BASE + USER_STACK_SIZE;
 
-constexpr std::uintptr_t KERNEL_STACK_SIZE = 16 * 1024; // 16KiB
+constexpr std::uintptr_t KERNEL_STACK_SIZE = 32 * 1024; // 32KiB
 
 /// based on /proc/sys/vm/mmap_min_addr in Linux
 constexpr std::uintptr_t DEFAULT_MMAP_MIN_ADDR = 65536;
@@ -176,94 +176,34 @@ void Process::map_elf64_header(std::uint8_t* file_buffer, const elf::Elf64_Progr
     }
 }
 
-void Process::exec_elf64(std::uint8_t* file_buffer, std::size_t size, char* const argv[], char* const envp[])
+void Process::build_user_stack(const kvector<kstring>& argv_strs, const kvector<kstring>& envp_strs)
 {
-    kassert_not_null(file_buffer);
+    arch::vmm::map_user_pages(pml4, USER_STACK_BASE, USER_STACK_SIZE);
 
-    (void)argv;
-    (void)envp;
+    auto* stack = reinterpret_cast<std::uintptr_t*>(USER_STACK_TOP);
 
-    elf::Elf64_File file = elf::parse_file(file_buffer, size);
-
-    if (!file.is_valid_elf) {
-        kpanic("attempted to load an invalid ELF64 file");
-    }
-
-    int argc = 0;
-    kvector<kstring> argv_strs{};
-    kvector<kstring> envp_strs{};
+    *(--stack) = 0; // padding for 16-byte alignment
 
     kvector<std::uintptr_t> argv_ptrs{};
     kvector<std::uintptr_t> envp_ptrs{};
 
-    arch::cpu::stac();
+    for (const kstring& envp : envp_strs) {
+        auto* ptr = reinterpret_cast<std::uint8_t*>(stack);
 
-    if (argv != nullptr) {
-        while (true) {
-            const char* arg = argv[argc];
-
-            if (arg == nullptr) {
-                break;
-            }
-
-            kstring str = kstring::from_userspace(arg);
-            log::debugf("argv[{}] = {}", argc, str);
-            argv_strs.push_back(str);
-            argc++;
-        }
+        ptr -= envp.length() + 1;
+        memcpy(ptr, envp.c_str(), envp.length());
+        *(ptr + envp.length()) = '\0';
+        stack = reinterpret_cast<std::uint64_t*>(ptr);
+        argv_ptrs.push_back(reinterpret_cast<std::uintptr_t>(stack));
     }
 
-    if (pml4 != nullptr) {
-        arch::vmm::free_user_pml4(pml4);
-    }
+    for (const kstring& argv : argv_strs) {
+        auto* ptr = reinterpret_cast<std::uint8_t*>(stack);
 
-    pml4 = arch::vmm::create_user_pml4();
-    arch::vmm::switch_pml4(pml4);
-
-    state = ProcessState::NEW;
-    wait_reason = WaitReason::NONE;
-    exit_status = 0;
-    heap_break = 0;
-    kernel_rsp = reinterpret_cast<std::uintptr_t>(kernel_stack + KERNEL_STACK_SIZE);
-    wake_time_ns = 0;
-    fs_base = 0;
-    tidptr = 0;
-    uheap = arch::vmm::create_user_heap(pml4);
-
-    for (const elf::Elf64_ProgramHeader& header : file.program_headers) {
-        map_elf64_header(file_buffer, header);
-    }
-
-    arch::vmm::map_user_pages(pml4, USER_STACK_BASE, USER_STACK_SIZE);
-
-    // Set up initial stack for Linux ABI compatibility
-    // musl libc expects: argc, argv[], NULL, envp[], NULL, auxv[], AT_NULL
-    // All zeros: argc=0, argv/envp terminated by NULL, auxv terminated by AT_NULL(0,0)
-    // 6 entries = 48 bytes ensures 16-byte alignment (required by System V ABI)
-    auto* stack = reinterpret_cast<std::uint64_t*>(USER_STACK_TOP);
-    // *(--stack) = 0; // padding for 16-byte alignment
-    // *(--stack) = 0; // AT_NULL value
-    // *(--stack) = 0; // AT_NULL type
-    // *(--stack) = 0; // envp terminator (NULL)
-    // *(--stack) = 0; // argv terminator (NULL)
-    // *(--stack) = 0; // argc
-
-    *(--stack) = 0; // padding for 16-byte alignment
-
-    for (const kstring& envp_str : envp_strs) {
-        // stack -= envp_str.length() + 1;
-        // memcpy(stack, envp_str.c_str(), envp_str.length());
-        // *(stack + envp_str.length()) = '\0';
-        // envp_ptrs.push_back(reinterpret_cast<std::uintptr_t>(stack));
-    }
-
-    for (const kstring& argv_str : argv_strs) {
-        auto* stack_str_ptr = reinterpret_cast<std::uint8_t*>(stack);
-
-        stack_str_ptr -= argv_str.length() + 1;
-        memcpy(stack_str_ptr, argv_str.c_str(), argv_str.length());
-        *(stack_str_ptr + argv_str.length()) = '\0';
-        stack = reinterpret_cast<std::uint64_t*>(stack_str_ptr);
+        ptr -= argv.length() + 1;
+        memcpy(ptr, argv.c_str(), argv.length());
+        *(ptr + argv.length()) = '\0';
+        stack = reinterpret_cast<std::uint64_t*>(ptr);
         argv_ptrs.push_back(reinterpret_cast<std::uintptr_t>(stack));
     }
 
@@ -274,8 +214,8 @@ void Process::exec_elf64(std::uint8_t* file_buffer, std::size_t size, char* cons
 
     *(--stack) = 0; // envp terminator (NULL)
 
-    for (std::uintptr_t envp_ptr : envp_ptrs) {
-        // *(reinterpret_cast<std::uint64_t*>(--stack)) = envp_ptr;
+    for (int i = envp_ptrs.size() - 1; i >= 0; i--) {
+        *(--stack) = envp_ptrs[i];
     }
 
     *(--stack) = 0; // argv terminator (NULL)
@@ -284,14 +224,48 @@ void Process::exec_elf64(std::uint8_t* file_buffer, std::size_t size, char* cons
         *(--stack) = argv_ptrs[i];
     }
 
-    *(--stack) = argc;
-
-    context_frame = reinterpret_cast<arch::context::ContextFrame*>(kernel_rsp - sizeof(arch::context::ContextFrame));
-
-    build_synthetic_context_frame(userspace_entry_trampoline);
+    *(--stack) = argv_strs.size();
 
     user_rsp = reinterpret_cast<std::uintptr_t>(stack);
-    entry = file.entry;
+}
+
+void Process::exec_elf64(std::uint8_t* file_buffer, std::size_t size, kvector<kstring>& argv_strs, kvector<kstring>& envp_strs)
+{
+    kassert_not_null(file_buffer);
+
+    elf::Elf64_File elf64_file = elf::parse_file(file_buffer, size);
+
+    if (!elf64_file.is_valid_elf) {
+        kpanic("attempted to load an invalid ELF64 file");
+    }
+
+    if (pml4 != nullptr) {
+        arch::vmm::free_user_pml4(pml4);
+    }
+
+    pml4 = arch::vmm::create_user_pml4();
+
+    arch::vmm::switch_pml4(pml4);
+    arch::cpu::stac();
+
+    state = ProcessState::NEW;
+    wait_reason = WaitReason::NONE;
+    exit_status = 0;
+    heap_break = 0;
+    wake_time_ns = 0;
+    fs_base = 0;
+    tidptr = 0;
+    uheap = arch::vmm::create_user_heap(pml4);
+    kernel_rsp = reinterpret_cast<std::uintptr_t>(kernel_stack + KERNEL_STACK_SIZE);
+    context_frame = reinterpret_cast<arch::context::ContextFrame*>(kernel_rsp - sizeof(arch::context::ContextFrame));
+    entry = elf64_file.entry;
+
+    for (const elf::Elf64_ProgramHeader& header : elf64_file.program_headers) {
+        map_elf64_header(file_buffer, header);
+    }
+
+    build_user_stack(argv_strs, envp_strs);
+    build_synthetic_context_frame(userspace_entry_trampoline);
 
     log();
 

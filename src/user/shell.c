@@ -65,22 +65,17 @@ void cmd_ls(char* path)
     }
 }
 
-void cmd_cat(const char* path)
+void cmd_cat(char* path)
 {
-    FILE* file = fopen(path, "r");
+    int pid = fork();
 
-    if (!file) {
-        puts("file not found!");
-        return;
+    if (pid == 0) {
+        char* argv[] = {"cat", path, NULL};
+        execve("/bin/cat", argv, NULL);
+    } else {
+        int status;
+        wait4(pid, &status, 0, NULL);
     }
-
-    char buffer[1024];
-
-    int bytes = fread(buffer, 1, sizeof(buffer), file);
-
-    buffer[bytes] = '\0';
-
-    printf("%s\n", buffer);
 }
 
 void cmd_pid(void)
@@ -136,16 +131,16 @@ void cmd_mmap(void)
     }
 }
 
-void cmd_mkdir(const char* path)
+void cmd_mkdir(char* path)
 {
-    int err;
+    int pid = fork();
 
-    if ((err = mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) < 0) {
-        if (err == -EROFS) {
-            puts("Directory is readonly");
-        } else {
-            puts("Failed to create dir");
-        }
+    if (pid == 0) {
+        char* argv[] = {"cat", path, NULL};
+        execve("/bin/mkdir", argv, NULL);
+    } else {
+        int status;
+        wait4(pid, &status, 0, NULL);
     }
 }
 

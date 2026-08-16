@@ -365,8 +365,11 @@ void run_tty_program(const kstring& name)
 
     auto* proc = new process::Process{};
 
+    kvector<kstring> argv{};
+    kvector<kstring> envp{};
+
     proc->build_stdio();
-    proc->exec_elf64(data, size, nullptr, nullptr);
+    proc->exec_elf64(data, size, argv, envp);
 
     scheduler::mechanism::add_process(proc);
 }

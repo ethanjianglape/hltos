@@ -44,7 +44,29 @@ int sys_execve(const char* path, char* argv[], char* envp[])
 
     process::Process* current = arch::percpu::current_process();
 
-    current->exec_elf64(data, size, argv, envp);
+    std::size_t argc = 0;
+
+    kvector<kstring> argv_strs{};
+    kvector<kstring> envp_strs{};
+
+    arch::cpu::stac();
+
+    if (argv != nullptr) {
+        while (true) {
+            const char* arg = argv[argc];
+
+            if (arg == nullptr) {
+                break;
+            }
+
+            argv_strs.push_back(kstring::from_userspace(arg));
+            argc++;
+        }
+    }
+
+    arch::cpu::clac();
+
+    current->exec_elf64(data, size, argv_strs, envp_strs);
 
     scheduler::mechanism::yield_new_process();
 }
