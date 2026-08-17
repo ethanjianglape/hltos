@@ -45,6 +45,7 @@ int sys_execve(const char* path, char* argv[], char* envp[])
     process::Process* current = arch::percpu::current_process();
 
     std::size_t argc = 0;
+    std::size_t envc = 0;
 
     kvector<kstring> argv_strs{};
     kvector<kstring> envp_strs{};
@@ -61,6 +62,19 @@ int sys_execve(const char* path, char* argv[], char* envp[])
 
             argv_strs.push_back(kstring::from_userspace(arg));
             argc++;
+        }
+    }
+
+    if (envp != nullptr) {
+        while (true) {
+            const char* env = envp[envc];
+
+            if (env == nullptr) {
+                break;
+            }
+
+            envp_strs.push_back(kstring::from_userspace(env));
+            envc++;
         }
     }
 
@@ -91,6 +105,13 @@ int sys_exit(int status)
     proc->exit_status = status;
 
     scheduler::mechanism::yield_zombie();
+}
+
+int sys_pause()
+{
+    scheduler::mechanism::yield_blocked(process::WaitReason::SIGNAL);
+
+    return 0;
 }
 
 }

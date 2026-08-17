@@ -3,5 +3,5 @@
 #include <cstdint>
 
 namespace syscall {
-int sys_sleep_ms(std::uint64_t ms);
+int sys_sleep_ns(std::uint64_t ns);
 }

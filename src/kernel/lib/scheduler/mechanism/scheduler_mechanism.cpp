@@ -492,6 +492,8 @@ void yield_sleep_us(std::uint64_t duration_us)
 ///
 void yield_sleep_ns(std::uint64_t duration_ns)
 {
+    // log::debugf("yield sleep: {}ns", duration_ns);
+
     process::Process* current = arch::percpu::current_process();
     current->sleep_for(duration_ns);
     yield_blocked(process::WaitReason::SLEEP);

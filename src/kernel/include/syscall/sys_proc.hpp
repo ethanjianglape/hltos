@@ -17,4 +17,6 @@ int sys_execve(const char* path, char* argv[], char* envp[]);
 [[noreturn]]
 int sys_exit(int status);
 
+int sys_pause();
+
 }

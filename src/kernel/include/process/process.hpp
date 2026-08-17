@@ -29,7 +29,8 @@ enum class WaitReason : std::uint8_t {
     SLEEP = 2,
     FRAMEBUFFER = 3,
     CHILD_PROCESS = 4,
-    MUTEX = 5
+    MUTEX = 5,
+    SIGNAL = 6
 };
 
 struct Process {

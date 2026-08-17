@@ -8,18 +8,18 @@
  * RSDP, etc.). We just call kernel_main() and hang if it ever returns.
  *
  * Other bootloaders (GRUB, custom) would have their own entry files with
- * different setup requirements - Limine handles more for us than most.
+ * different setup requirements, Limine handles more for us than most.
  */
 
 #include <arch/x64/cpu/cpu.hpp>
 #include <kpanic/kpanic.hpp>
 
-extern void kernel_main();
-
 extern "C" {
 using ctor_fn = void (*)();
 extern ctor_fn __init_array_start[];
 extern ctor_fn __init_array_end[];
+
+extern void kernel_main(void);
 }
 
 // Calls C++ global/static constructors. The linker collects one function

@@ -741,8 +741,6 @@ PML4E* clone_user_pml4(PML4E* pml4)
                         continue;
                     }
 
-                    log::debugf("found mapped user page at pml4={}, pdpt={}, pd={}, pt={}", pml4_idx, pdpt_idx, pd_idx, pt_idx);
-
                     std::uintptr_t phys_frame = pmm::alloc_frame();
 
                     new_pt[pt_idx] = pt[pt_idx];

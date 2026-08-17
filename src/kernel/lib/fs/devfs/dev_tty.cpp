@@ -352,34 +352,6 @@ void DevTtyInode::page_down()
     console::scroll_down();
 }
 
-void run_tty_program(const kstring& name)
-{
-    fs::FileDescriptor* fd = fs::open(name.c_str(), 0);
-
-    kassert_not_null(fd);
-
-    auto size = fd->inode->size;
-    auto* data = new std::uint8_t[size];
-
-    fd->inode->read(fd, data, size);
-
-    auto* proc = new process::Process{};
-
-    kvector<kstring> argv{};
-    kvector<kstring> envp{};
-
-    proc->build_stdio();
-    proc->exec_elf64(data, size, argv, envp);
-
-    scheduler::mechanism::add_process(proc);
-}
-
-void init_tty()
-{
-    run_tty_program("/bin/shell");
-    // run_tty_program("/bin/musl");
-}
-
 int DevTtyInode::open(FileDescriptor*, int)
 {
     return 0;

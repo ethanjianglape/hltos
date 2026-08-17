@@ -134,6 +134,8 @@ static const char* syscall_name(std::uint64_t syscall_num)
         return "fstat";
     case linux::SYS_LSEEK:
         return "lseek";
+    case linux::SYS_PAUSE:
+        return "pause";
     case linux::SYS_NANOSLEEP:
         return "nanosleep";
     case linux::SYS_GETPID:
@@ -229,8 +231,10 @@ extern "C" std::uint64_t syscall_dispatcher(x64::trap::SyscallFrame* frame)
         return syscall::sys_fstat(arg1, reinterpret_cast<fs::Stat*>(arg2));
     case linux::SYS_LSEEK:
         return syscall::sys_lseek(arg1, arg2, arg3);
+    case linux::SYS_PAUSE:
+        return syscall::sys_pause();
     case linux::SYS_NANOSLEEP:
-        return syscall::sys_sleep_ms(arg1);
+        return syscall::sys_sleep_ns(arg1);
     case linux::SYS_GETPID:
         return syscall::sys_getpid();
     case linux::SYS_MMAP:

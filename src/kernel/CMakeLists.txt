@@ -80,6 +80,7 @@ set(LIB_KERNEL_SOURCES
   ${LIB_DIR}/gfx/gfx.cpp
   ${LIB_DIR}/clock/clock.cpp
   ${LIB_DIR}/exclusive/kmutex.cpp
+  ${LIB_DIR}/userspace/userspace.cpp
 )
 
 # Test sources (only compiled when KERNEL_TESTS is ON)

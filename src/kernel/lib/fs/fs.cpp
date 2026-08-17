@@ -25,8 +25,6 @@ void init()
     mount("/dev", devfs, nullptr);
     mount("/tmp", tmpfs, nullptr);
     mount("/proc", procfs, nullptr);
-
-    devfs::init_tty();
 }
 
 Inode::Inode(MountPoint* mp)

@@ -85,30 +85,6 @@ static void redraw_kthread()
     }
 }
 
-static void debug_kthread()
-{
-    while (true) {
-        g_fb_spinlock.lock();
-
-        if (!redraw_times.empty()) {
-            std::uint64_t avg_us = 0;
-
-            for (std::uint64_t us : redraw_times) {
-                avg_us += us;
-            }
-
-            avg_us /= redraw_times.size();
-            redraw_times.clear();
-
-            log::debugf("framebuffer: average redraw time: {}us", avg_us);
-        }
-
-        g_fb_spinlock.unlock();
-
-        scheduler::mechanism::yield_sleep_ms(2000);
-    }
-}
-
 void init(const FrameBufferInfo& info)
 {
     fb_width = info.width;
@@ -125,7 +101,6 @@ void init(const FrameBufferInfo& info)
     vram_buff_end = vram_buff + vram_size;
 
     scheduler::mechanism::add_process(new process::KThread(redraw_kthread));
-    // scheduler::mechanism::add_process(new process::KThread(debug_kthread));
 
     log::infof("framebuffer: {}x{} @ {} bpp (pitch={})", fb_width, fb_height, fb_bpp, fb_pitch);
     log::infof("framebuffer: {} total pixels", fb_num_pixels);

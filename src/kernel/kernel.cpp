@@ -1,4 +1,3 @@
-#include "process/process.hpp"
 #include <arch/x64/cpu/cpu.hpp>
 #include <arch/x64/drivers/apic/apic.hpp>
 #include <arch/x64/drivers/keyboard/keyboard.hpp>
@@ -22,28 +21,14 @@
 #include <log/log.hpp>
 #include <scheduler/mechanism/scheduler_mechanism.hpp>
 #include <scheduler/policy/scheduler_policy.hpp>
+#include <userspace/userspace.hpp>
 
 #ifdef KERNEL_TESTS
 #include <test/test.hpp>
 #endif
 
-void kt1()
-{
-    log::debug("Hello from kt1!");
-}
-
-void kt2()
-{
-    log::debug("Hello from kt2!");
-}
-
-void kt3()
-{
-    log::debug("Hello from kt3!");
-}
-
-[[noreturn]]
-void kernel_main()
+extern "C" [[noreturn]]
+void kernel_main(void)
 {
     x64::cpu::early_init();
     x64::percpu::early_init();
@@ -64,20 +49,16 @@ void kernel_main()
 
     console::init();
     fs::init();
-    // gfx::init();
 
 #ifdef KERNEL_TESTS
     test::run_all();
 #endif
 
-    scheduler::mechanism::add_process(new process::KThread{kt1});
-    scheduler::mechanism::add_process(new process::KThread{kt2});
-    scheduler::mechanism::add_process(new process::KThread{kt3});
-
-    x64::percpu::enable_preemption();
-    x64::cpu::sti();
+    userspace::init();
 
     while (true) {
+        x64::percpu::enable_preemption();
+        x64::cpu::sti();
         x64::cpu::hlt();
     }
 }

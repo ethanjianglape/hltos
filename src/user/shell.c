@@ -136,7 +136,7 @@ void cmd_mkdir(char* path)
     int pid = fork();
 
     if (pid == 0) {
-        char* argv[] = {"cat", path, NULL};
+        char* argv[] = {"mkdir", path, NULL};
         execve("/bin/mkdir", argv, NULL);
     } else {
         int status;
