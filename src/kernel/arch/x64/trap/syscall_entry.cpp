@@ -207,14 +207,14 @@ extern "C" std::uint64_t syscall_dispatcher(x64::trap::SyscallFrame* frame)
     const std::uint64_t arg5 = frame->r8;
     const std::uint64_t arg6 = frame->r9;
 
-    log::debugf("**** syscall entry ****");
-    log::debugf("* syscall  = {} ({})", syscall_name(syscall_num), syscall_num);
-    log::debugf("* arg1 = {}", fmt::hex{arg1});
-    log::debugf("* arg2 = {}", fmt::hex{arg2});
-    log::debugf("* arg3 = {}", fmt::hex{arg3});
-    log::debugf("* arg4 = {}", fmt::hex{arg4});
-    log::debugf("* arg5 = {}", fmt::hex{arg5});
-    log::debugf("* arg6 = {}", fmt::hex{arg6});
+    // log::debugf("**** syscall entry ****");
+    // log::debugf("* syscall  = {} ({})", syscall_name(syscall_num), syscall_num);
+    // log::debugf("* arg1 = {}", fmt::hex{arg1});
+    // log::debugf("* arg2 = {}", fmt::hex{arg2});
+    // log::debugf("* arg3 = {}", fmt::hex{arg3});
+    // log::debugf("* arg4 = {}", fmt::hex{arg4});
+    // log::debugf("* arg5 = {}", fmt::hex{arg5});
+    // log::debugf("* arg6 = {}", fmt::hex{arg6});
 
     switch (syscall_num) {
     case linux::SYS_READ:

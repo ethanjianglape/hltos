@@ -676,7 +676,7 @@ void free_user_pml4(PML4E* pml4)
                         continue;
                     }
 
-                    log::debugf("freeing PTE at pml4={} pdpt={} pd={} pt={}", pml4_idx, pdpt_idx, pd_idx, pt_idx);
+                    log::infof("VMM: free PTE at pml4 index [{}, {}, {}, {}]", pml4_idx, pdpt_idx, pd_idx, pt_idx);
 
                     free_pte(pt[pt_idx]);
                 }

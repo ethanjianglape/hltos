@@ -221,6 +221,8 @@ struct Elf64_File {
     bool is_valid_elf;
     Elf64_Addr entry;
     kvector<Elf64_ProgramHeader> program_headers;
+
+    Elf64_File(Elf64_Addr entry);
 };
 
 Elf64_File parse_file(std::uint8_t* buffer, std::size_t size);
